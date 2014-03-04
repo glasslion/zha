@@ -6,7 +6,7 @@ AUTHOR = u'Leonardo Zhou'
 SITENAME = u'\u4e91\u7ffc\u56fe\u5357'
 SITEURL = ''
 
-TIMEZONE = 'Europe/Paris'
+TIMEZONE = 'Asia/Shanghai'
 
 DEFAULT_LANG = u'zh'
 
@@ -28,4 +28,4 @@ SOCIAL = (('You can add links in your config file', '#'),
 DEFAULT_PAGINATION = 10
 
 # Uncomment following line if you want document-relative URLs when developing
-#RELATIVE_URLS = True
+RELATIVE_URLS = True
