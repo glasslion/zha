@@ -1,11 +1,11 @@
-Title: Photo
+Title: Google Reader 魂兮归开
 Date: 2013-07-08 11:19:07
-Author: glasslion
-Category: photo
+Author: Leonardo Zhou
+Category: Others
 Slug: post/54883388320/google-reader
+Save_as: post/54883388320/google-reader/index.html
+Tags: google
 
-![][]
+今天是Google Reader 头七，缅怀下遗容
 
-Google Reader 头七，缅怀下遗容
-
-  []: http://25.media.tumblr.com/8e3dc27d949f60528e1f8bbc4ada495b/tumblr_mpll7vkr2b1r1xr4eo1_1280.png
+![images/google_reader_final.jpg](http://ww4.sinaimg.cn/large/6c3391c1gw1eecaaj89ayj20zk0l10xp.jpg)
