@@ -1,27 +1,29 @@
 Title: Design for programmers —— 三个帮程序员学点设计的小游戏
 Date: 2013-08-18 00:20:01
-Author: glasslion
-Category: text
+Author: Leonardo Zhou
+Category: 分享链接
 Slug: post/58516469925/design-for-programmers
+Save_as: post/58516469925/design-for-programmers/index.html
+
 
 From [Method of Action][]
 
 [Kern Type][] : 合理调节和分配字符的间距
 
-![][]
+![kern_type][]
 
 [Shape Type][] : 调节字体的局部形状
 
-![][1]
+![shape_type][]
 
 [Color][] : 取色游戏
 
-![][2]
+![color_pick][]
 
   [Method of Action]: http://method.ac/
   [Kern Type]: http://type.method.ac/
-  []: http://media.tumblr.com/42cfd345435ef81d9d715b4a61481101/tumblr_inline_mroigypCpT1qz4rgp.png
+  [kern_type]: http://ww4.sinaimg.cn/large/6c3391c1gw1eee880r879j208205ugll.jpg
   [Shape Type]: http://shape.method.ac/
-  [1]: http://media.tumblr.com/b5053feefb6582ad09b09e582137f030/tumblr_inline_mroihcyyYf1qz4rgp.png
+  [shape_type]: http://ww1.sinaimg.cn/large/6c3391c1gw1eee84xrq3hj208205uq2t.jpg
   [Color]: http://color.method.ac/
-  [2]: http://media.tumblr.com/ebd92bfd62020ca1bcc60de2c4b757a3/tumblr_inline_mroihnRCEx1qz4rgp.png
+  [color_pick]: http://ww1.sinaimg.cn/large/6c3391c1gw1eee85xa5o5j208205umx6.jpg
