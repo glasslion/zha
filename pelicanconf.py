@@ -16,14 +16,17 @@ CATEGORY_FEED_ATOM = None
 TRANSLATION_FEED_ATOM = None
 
 # Blogroll
-LINKS =  (('Pelican', 'http://getpelican.com/'),
-          ('Python.org', 'http://python.org/'),
-          ('Jinja2', 'http://jinja.pocoo.org/'),
-          ('You can modify those links in your config file', '#'),)
+LINKS =  (
+    ('Python.org', 'http://python.org/'),
+)
 
 # Social widget
-SOCIAL = (('You can add links in your config file', '#'),
-          ('Another social link', '#'),)
+SOCIAL = (
+    ('twitter', 'https://twitter.com/glasslion'),
+    ('github', 'https://github.com/glasslion'),
+    ('google-plus', 'https://google.com/+LeonardoZhou'),
+    ('envelope', 'mailto:glasslion@gmail.com'),
+)
 
 DEFAULT_PAGINATION = 10
 
@@ -46,6 +49,3 @@ TEMPLATE_PAGES = {'blog.html': 'blog.html'}
 DIRECT_TEMPLATES = ('index', 'tags', 'categories', 'archives', 'blog-index', 'blog')
 PAGINATED_DIRECT_TEMPLATES = ('blog-index',)
 POST_LIMIT = 10
-
-# Social
-GITHUB_URL = 'https://github.com/glasslion'
