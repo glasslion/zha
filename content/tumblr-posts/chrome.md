@@ -1,10 +1,12 @@
 Title: 小内存用户chrome的福音:一键管理所有扩展
 Date: 2013-02-25 11:54:06
-Author: glasslion
-Category: text
+Author: Leonardo Zhou
+Category: Productivity
 Slug: post/43957200792/chrome
+Save_as: post/43957200792/chrome/index.html
+Tags: chrome, tool
 
-![](http://media.tumblr.com/a5a44c7eecb25cfb8a0dcbc534e398a1/tumblr_inline_mijxjrI0lb1qz4rgp.png)
+![images/chrome-ext-one-click.png](http://ww1.sinaimg.cn/large/6c3391c1gw1eee8ehms0ij20dw08paam.jpg)
 
 很多chrome扩展在用户点击它之前，不会干任何正事，却会占用大量内存。(为了解决这个问题，Google推出了根据事件触发的event page来替代一直跑在后台的background page。但目前使用的开发者并不多。大概是国外web开发者的电脑配置都很高吧)
 
