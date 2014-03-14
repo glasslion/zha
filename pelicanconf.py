@@ -43,6 +43,7 @@ ARTICLE_SAVE_AS = '{slug}/index.html'
 
 # Custom theme
 THEME = 'themes/BT3-Flat-4zha'
+STOCK_PHOTO = 'http://ww2.sinaimg.cn/large/6c3391c1gw1eef9wv6doyj212w0jetc6.jpg'
 
 # BT3-Flat-4zha settings
 TEMPLATE_PAGES = {'blog.html': 'blog.html'}
