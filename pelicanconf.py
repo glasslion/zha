@@ -43,10 +43,11 @@ ARTICLE_SAVE_AS = '{slug}/index.html'
 
 # Custom theme
 THEME = 'themes/BT3-Flat-4zha'
-STOCK_PHOTO = 'http://ww2.sinaimg.cn/large/6c3391c1gw1eef9wv6doyj212w0jetc6.jpg'
 
 # BT3-Flat-4zha settings
 TEMPLATE_PAGES = {'blog.html': 'blog.html'}
 DIRECT_TEMPLATES = ('index', 'tags', 'categories', 'archives', 'blog-index', 'blog')
 PAGINATED_DIRECT_TEMPLATES = ('blog-index',)
 POST_LIMIT = 10
+STOCK_PHOTO = 'http://ww2.sinaimg.cn/large/6c3391c1gw1eef9wv6doyj212w0jetc6.jpg'
+BLOG_LOGO = 'http://static.tumblr.com/5483bdcce6a32349f096604033a96608/k03pzap/ziWmplna8/tumblr_static_char-leo.png'
