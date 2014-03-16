@@ -3,7 +3,7 @@
 from __future__ import unicode_literals
 
 AUTHOR = u'Leonardo Zhou'
-SITENAME = u'\u4e91\u7ffc\u56fe\u5357'
+SITENAME = u'\u7ffc\u56fe\u5357'
 SITEURL = ''
 
 TIMEZONE = 'Asia/Shanghai'
@@ -26,6 +26,7 @@ SOCIAL = (
     ('github', 'https://github.com/glasslion'),
     ('google-plus', 'https://google.com/+LeonardoZhou'),
     ('envelope', 'mailto:glasslion@gmail.com'),
+    ('stack-overflow', 'http://stackoverflow.com/users/1093020/leonardo-z'),
 )
 
 DEFAULT_PAGINATION = 10
