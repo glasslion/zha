@@ -50,4 +50,4 @@ DIRECT_TEMPLATES = ('index', 'tags', 'categories', 'archives', 'blog-index', 'bl
 PAGINATED_DIRECT_TEMPLATES = ('blog-index',)
 POST_LIMIT = 10
 STOCK_PHOTO = 'http://ww2.sinaimg.cn/large/6c3391c1gw1eef9wv6doyj212w0jetc6.jpg'
-BLOG_LOGO = 'http://static.tumblr.com/5483bdcce6a32349f096604033a96608/k03pzap/ziWmplna8/tumblr_static_char-leo.png'
+BLOG_LOGO = 'http://wing2south.qiniudn.com/leo-logo.png'
