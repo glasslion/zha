@@ -50,5 +50,5 @@ TEMPLATE_PAGES = {'blog.html': 'blog.html'}
 DIRECT_TEMPLATES = ('index', 'tags', 'categories', 'archives', 'blog-index', 'blog')
 PAGINATED_DIRECT_TEMPLATES = ('blog-index',)
 POST_LIMIT = 10
-STOCK_PHOTO = 'http://ww2.sinaimg.cn/large/6c3391c1gw1eef9wv6doyj212w0jetc6.jpg'
+STOCK_PHOTO = 'http://ww3.sinaimg.cn/large/6c3391c1gw1eejqmtombwj212w0gfte6.jpg'
 BLOG_LOGO = 'http://wing2south.qiniudn.com/leo-logo.png'
