@@ -49,12 +49,9 @@ def cf_upload():
           '-K {cloudfiles_api_key} '
           'upload -c {cloudfiles_container} .'.format(**env))
 
-@hosts(production)
 def publish():
-    local('pelican -s publishconf.py')
-    project.rsync_project(
-        remote_dir=dest_path,
-        exclude=".DS_Store",
-        local_dir=DEPLOY_PATH.rstrip('/') + '/',
-        delete=True
-    )
+    local('rm -rf ghp-output')
+    local('mkdir ghp-output')
+    local('pelican content -o ghp-output -s publishconf.py')
+    local('ghp-import ghp-output && git push origin gh-pages')
+    local('rm -rf ghp-output')
