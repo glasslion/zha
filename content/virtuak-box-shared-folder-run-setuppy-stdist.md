@@ -1,5 +1,7 @@
-Title: Virtual box 共享文件夹下运行 python setup.py sdist 报 Operation not permitted 错误的解决方案Author: Leonardo Zhou
+Title: Virtual box 共享文件夹下运行 python setup.py sdist 报 Operation not permitted 错误的解决方法
+Author: Leonardo Zhou
 Category: Python
+Date: 2014-03-18 14:05:00
 Slug: post/virtuak-box-shared-folder-run-setuppy-stdist
 save_as: post/virtuak-box-shared-folder-run-setuppy-stdist/index.html
 Tags: vagrant
@@ -18,7 +20,7 @@ Tags: vagrant
     hard linking xxx -> xxx
     error: Operation not permitted
 
-还好错误信息还算是比较明了的: setup.py 尝试在工作目录下建立 hard link,  virtualbox 目前还不支持在 shared folder下建立 hard link, 从而引发了  Operation not permitted
+还好错误信息还算是比较明了的: 因为脚本是在 Ubuntu 虚拟机下运行， Python 假设操作系统支持 hardlink, 于是 setup.py 会尝试在工作目录下建立 hardlink,  但是virtualbox 目前还不支持在 shared folder下建立 hard link, 从而引发了  Operation not permitted。
 
 用 Google 和 stackoverflow 搜索之后，发现这个 bug 已经分别被人反馈给 [Python][2] 和 [virtualbox][3] 的开发者了，但是在 Python 和 virtualbox 任何一方都不太可能在短时间内被修复。
 
@@ -26,7 +28,9 @@ Tags: vagrant
 
 > A dirty hack is to include this line at the top of your setup.py: del os.link
 
-我做了个小改动，通过检查环境变量， 只有当 `setup.py` 在 vagrant 下运行时， 才会 `del os.link`
+因为 `disutils` 是通过检查 os.link 是否为 None 来决定是否使用 hardlink, 那么将 os.link monkey patch 为 None 就行了 。这么做除了多占用些微不足道的磁盘空间，不会有任何副作用。
+
+我做了个小改动，通过检查环境变量， 只有当 `setup.py` 在 vagrant 下运行时， 才会 `del os.link`.
 
     :::Python
     # put the following code at the beginning of your setup.py
