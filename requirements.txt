@@ -2,3 +2,5 @@ pelican
 Markdown
 Fabric
 ghp-import
+webassets
+cssmin

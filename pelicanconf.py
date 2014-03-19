@@ -10,7 +10,7 @@ BASE_DIR = os.path.dirname(__file__)
 # (https://github.com/getpelican/pelican-plugins)
 sys.path.append(os.path.join(BASE_DIR, "official_plugins"))
 
-import summary
+import summary, assets
 
 AUTHOR = u'Leonardo Zhou'
 SITENAME = u'\u7ffc\u56fe\u5357'
@@ -39,7 +39,7 @@ SOCIAL = (
     ('stack-overflow', 'http://stackoverflow.com/users/1093020/leonardo-z'),
 )
 
-PLUGINS = [summary]
+PLUGINS = [summary, assets]
 
 DEFAULT_PAGINATION = 10
 
