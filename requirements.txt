@@ -1,6 +1,11 @@
+# official requirements
 pelican
 Markdown
 Fabric
+
+# github pages
 ghp-import
+
+# assert
 webassets
 cssmin
