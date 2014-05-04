@@ -57,4 +57,5 @@ ARTICLE_SAVE_AS = '{slug}/index.html'
 # Custom theme
 THEME = '../pelican-themes/cebong'
 
+
 QINIU_BUCKET_URL = 'http://wing2south.qiniudn.com'
