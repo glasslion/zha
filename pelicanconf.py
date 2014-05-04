@@ -13,7 +13,9 @@ sys.path.append(os.path.join(BASE_DIR, "official_plugins"))
 import summary, assets
 
 AUTHOR = u'Leonardo Zhou'
-SITENAME = u'\u7ffc\u56fe\u5357'
+SITENAME = u'Wings towards the south'
+SITE_SUB_NAME = u'翼图南'
+SITETAGLINE = u'有鸟焉 其名为鹏 背若泰山 翼若垂天之云 ... 然后图南 且适南冥也'
 SITEURL = ''
 
 TIMEZONE = 'Asia/Shanghai'
@@ -27,7 +29,6 @@ TRANSLATION_FEED_ATOM = None
 
 # Blogroll
 LINKS =  (
-    ('Python.org', 'http://python.org/'),
 )
 
 # Social widget
@@ -55,7 +56,7 @@ ARTICLE_URL = '{slug}/'
 ARTICLE_SAVE_AS = '{slug}/index.html'
 
 # Custom theme
-THEME = '../pelican-themes/cebong'
+THEME = '../pelican-zha'
 
 
 QINIU_BUCKET_URL = 'http://wing2south.qiniudn.com'
