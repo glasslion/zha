@@ -14,7 +14,7 @@ import summary, assets
 
 AUTHOR = u'Leonardo Zhou'
 SITENAME = u'Wings towards the south'
-SITE_SUB_NAME = u'翼图南'
+SITESUBTITLE = u'翼图南'
 SITETAGLINE = u'有鸟焉 其名为鹏 背若泰山 翼若垂天之云 ... 然后图南 且适南冥也'
 SITEURL = ''
 
