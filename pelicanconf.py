@@ -55,14 +55,6 @@ ARTICLE_URL = '{slug}/'
 ARTICLE_SAVE_AS = '{slug}/index.html'
 
 # Custom theme
-THEME = 'themes/BT3-Flat-4zha'
-
-# BT3-Flat-4zha settings
-TEMPLATE_PAGES = {'blog.html': 'blog.html'}
-DIRECT_TEMPLATES = ('index', 'tags', 'categories', 'archives', 'blog-index', 'blog')
-PAGINATED_DIRECT_TEMPLATES = ('blog-index',)
-POST_LIMIT = 10
-STOCK_PHOTO = 'http://ww3.sinaimg.cn/large/6c3391c1gw1eejqmtombwj212w0gfte6.jpg'
-BLOG_LOGO = 'http://wing2south.qiniudn.com/leo-logo-mini.png'
+THEME = '../pelican-themes/cebong'
 
 QINIU_BUCKET_URL = 'http://wing2south.qiniudn.com'
