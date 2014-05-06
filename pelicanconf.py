@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*- #
 from __future__ import unicode_literals
+from datetime import datetime
 import os
 import sys
 
@@ -34,11 +35,19 @@ LINKS =  (
 # Social widget
 SOCIAL = (
     ('twitter', 'https://twitter.com/glasslion'),
-    ('github', 'https://github.com/glasslion'),
-    ('google-plus', 'https://google.com/+LeonardoZhou'),
     ('envelope', 'mailto:glasslion@gmail.com'),
+    ('github', 'https://github.com/glasslion'),
     ('stack-overflow', 'http://stackoverflow.com/users/1093020/leonardo-z'),
+    ('google-plus', 'https://google.com/+LeonardoZhou'),
 )
+
+
+LOCALE = ('usa', 'en_US.utf8')
+
+DEFAULT_DATE_FORMAT = '%b %d, %Y'
+
+DIRECT_TEMPLATES = (('index', 'blog', 'tags', 'categories', 'archives'))
+PAGINATED_DIRECT_TEMPLATES = (('blog',))
 
 PLUGINS = [summary, assets]
 
@@ -57,6 +66,9 @@ ARTICLE_SAVE_AS = '{slug}/index.html'
 
 # Custom theme
 THEME = '../pelican-zha'
-
+MENUITEMS = (
+    ('blog', '/blog.html'),
+)
+CURRENT_DATETIME = datetime.now()
 
 QINIU_BUCKET_URL = 'http://wing2south.qiniudn.com'
