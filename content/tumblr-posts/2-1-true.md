@@ -5,11 +5,12 @@ Category: Python
 Slug: post/53490665799/2-1-true
 Save_as: post/53490665799/2-1-true/index.html
 Tags: fail
+Summary: Python 语言中， 不同类型对象之间的比较规则浅析
 
 ![python_compare][]
 
 
-## Python比较规则浅析 ##
+## Python 语言中， 不同类型对象之间的比较规则浅析 ##
 
 
 今天为了捉一个臭虫耗废了近一个小时，最后发现是 `if foo > 1:`这里的foo实际是字符串，导致`foo`是`"0"`时，`"0" > 1`为真。于是便花了点时间研究了下`Python`比较运算规则。

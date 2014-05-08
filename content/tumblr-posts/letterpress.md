@@ -6,8 +6,7 @@ Slug: post/58607609189/letterpress
 Save_as: post/58607609189/letterpress/index.html
 Tags: tool
 
-Letterpress是 [墨客][] 的作者 Wang Ling
-用Python开发的一款静态博客生成器。
+Letterpress 是 <!-- PELICAN_BEGIN_SUMMARY --> [墨客][] 的作者 Wang Ling用Python开发的一款静态博客生成器<!-- PELICAN_END_SUMMARY -->。
 
 
 ![image/letterpress.png][]

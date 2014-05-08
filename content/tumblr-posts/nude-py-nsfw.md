@@ -5,6 +5,7 @@ Category: Python
 Slug: post/58062234806/nude-py-nsfw
 Save_as: post/58062234806/nude-py-nsfw/index.html
 Tags: image-processing 
+Summary: 前方高能
 
 发个无节操的东东： [nude.py][]
 

@@ -5,7 +5,7 @@ Category: Others
 Slug: post/59374017369/appscale-google-app-engine
 Save_as: post/59374017369/appscale-google-app-engine/index.html
 Tags: google
-Summary: 利用开源项目, 实现一套和 Google App Engine 兼容的 API <br>![](http://ww2.sinaimg.cn/thumbnail/6c3391c1gw1eeea3r5v0tj20dw0a6gm9.jpg)
+Summary: 完全利用开源项目, 就能在自己的设备上搭建 一套和 Google App Engine 的 API 兼容的 PaaS
 
 这个项目其实出来以及很久了，只是前几天才在HackerNews引起关注，github上的 star,
 watch数也随之飙升。我之前苦苦搜寻GAE的替代时，都没发现这个项目。

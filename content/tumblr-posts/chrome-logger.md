@@ -6,7 +6,8 @@ Slug: post/57590624308/chrome-logger
 Save_as: post/57590624308/chrome-logger/index.html
 Tags: tool, chrome
 
-安装好Chrome Logger的[Chrome扩展][]，并在服务器端安装对应语言（目前支持[Ruby][], [PHP][], [Python][], [Node.js][], [.NET][]）的Chrome Logger库后，就可以在服务器端用类似`console.(variable)`的语句log变量，然后在Chrome Dev Tools上查看变量的实际值。
+
+安装好Chrome Logger的[Chrome扩展][]，并在服务器端安装对应语言（目前支持[Ruby][], [PHP][], [Python][], [Node.js][], [.NET][]）的Chrome Logger库后，就可以<!-- PELICAN_BEGIN_SUMMARY -->在服务器端用类似`console.(variable)`的语句log变量，然后在Chrome Dev Tools上查看变量的实际值<!-- PELICAN_END_SUMMARY -->。
 
 
 以`Django`为例, 配置十分简单：

@@ -1,14 +1,14 @@
-Title: Virtual box 共享文件夹下运行 python setup.py sdist 报 Operation not permitted 错误的解决方法
+Title: 在 vagrant shared folder 下运行  python setup.py sdist 会报错的解决方法
 Author: Leonardo Zhou
 Category: Python
 Date: 2014-03-18 14:05:00
 Slug: post/virtual-box-shared-folder-run-setuppy-stdist
 save_as: post/virtual-box-shared-folder-run-setuppy-stdist/index.html
 Tags: vagrant
+Summary: Python 开发者经常会使用 python setup.py sdist 命令来将项目打包成一个 package. 但是在 Vagrant(Virtual box) 下执行这一命令， Python 会报 Operation not permitted 错误。 Let's fix it！
 
 我 PC 上的开发环境是 Windows + Vagrant ( VirtualBox )。常用的编辑器则是 sublime, pycharm 之类的图形化工具。为了方便在 windows 上编辑 vm 中的文件，代码都是放在 virtual box 的 shared folder 下的。
 
-<!-- PELICAN_BEGIN_SUMMARY -->
 
 前不久，在我打包  [django-qiniu-storage][1] 并发布到 pypi 时， 遇到了点麻烦。
 
@@ -22,7 +22,6 @@ Tags: vagrant
     hard linking xxx -> xxx
     error: Operation not permitted
 
- <!-- PELICAN_END_SUMMARY -->
 
 还好错误信息还算是比较明了的: 因为脚本是在 Ubuntu 虚拟机下运行， Python 假设操作系统支持 hardlink, 于是 setup.py 会尝试在工作目录下建立 hardlink,  但是virtualbox 目前还不支持在 shared folder下建立 hard link, 从而引发了  Operation not permitted。
 

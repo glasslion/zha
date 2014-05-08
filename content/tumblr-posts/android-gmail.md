@@ -5,7 +5,7 @@ Category: Productivity
 Slug: post/54327549900/android-gmail
 Save_as: post/54327549900/android-gmail/index.html
 Tags: android, google
-
+Summary:不作恶的 Google 把这个按钮藏得真深 
 
 著名广告公司 `Google Inc.` 几个月前在给Android的Gmail客户端加上了实用的通知栏操作，更好的扁平化UI时，也顺便把一直就看不顺眼的删除邮件按钮给隐藏掉了。
 

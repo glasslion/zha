@@ -8,6 +8,8 @@ Tags: linux, tool
 
 [链接][]
 
+<!-- PELICAN_BEGIN_SUMMARY -->
 一个让KDE的剪贴板工具Klipper可以在命令行中使用的脚本
+<!-- PELICAN_END_SUMMARY -->
 
   [链接]: http://milianw.de/code-snippets/access-klipper-clipboard-on-cli-under-kde4
