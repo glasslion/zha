@@ -14,9 +14,9 @@ sys.path.append(os.path.join(BASE_DIR, "official_plugins"))
 import summary, assets
 
 AUTHOR = u'Leonardo Zhou'
-SITENAME = u'翼图南'
-SITESUBTITLE = u'Wings towards the south'
-SITETAGLINE = u'有鸟焉 其名为鹏 背若泰山 翼若垂天之云 ... 然后图南 且适南冥也'
+SITE_CHINESE_NAME =  u'翼图南'
+SITE_ENGLISH_NAME = u'Wings towards the south'
+SITENAME = SITE_CHINESE_NAME
 SITEURL = ''
 
 TIMEZONE = 'Asia/Shanghai'
