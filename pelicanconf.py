@@ -38,7 +38,6 @@ SOCIAL = (
     ('envelope', 'mailto:glasslion@gmail.com'),
     ('github', 'https://github.com/glasslion'),
     ('stack-overflow', 'http://stackoverflow.com/users/1093020/leonardo-z'),
-    ('google-plus', 'https://google.com/+LeonardoZhou'),
 )
 
 
@@ -50,6 +49,8 @@ DIRECT_TEMPLATES = (('blog', 'tags', 'categories', 'archives'))
 PAGINATED_DIRECT_TEMPLATES = (('blog',))
 
 PLUGINS = [summary, assets]
+
+SUMMARY_MAX_LENGTH = 20
 
 DEFAULT_PAGINATION = 10
 
@@ -72,3 +73,5 @@ MENUITEMS = (
 CURRENT_DATETIME = datetime.now()
 
 QINIU_BUCKET_URL = 'http://wing2south.qiniudn.com'
+CDN_URL = SITEURL
+

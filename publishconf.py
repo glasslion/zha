@@ -23,4 +23,5 @@ DELETE_OUTPUT_DIRECTORY = True
 # Following items are often useful when publishing
 
 DISQUS_SITENAME = "wing2south"
+CDN_URL = QINIU_BUCKET_URL
 #GOOGLE_ANALYTICS = ""
