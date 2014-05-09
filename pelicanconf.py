@@ -46,7 +46,7 @@ LOCALE = ('usa', 'en_US.utf8')
 
 DEFAULT_DATE_FORMAT = '%b %d, %Y'
 
-DIRECT_TEMPLATES = (('index', 'blog', 'tags', 'categories', 'archives'))
+DIRECT_TEMPLATES = (('blog', 'tags', 'categories', 'archives'))
 PAGINATED_DIRECT_TEMPLATES = (('blog',))
 
 PLUGINS = [summary, assets]
