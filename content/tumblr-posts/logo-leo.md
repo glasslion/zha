@@ -4,6 +4,7 @@ Author: Leonardo Zhou
 Category: Others
 Slug: post/54889473567/logo-leo
 Save_as: post/54889473567/logo-leo/index.html
+Summary: 
 
 ![images/logo-leo.png][]
 

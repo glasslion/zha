@@ -4,6 +4,7 @@ Author: Leonardo Zhou
 Category: Devops
 Slug: post/44371306891/vagrant
 Save_as: post/44371306891/vagrant/index.html
+Summary:
 
 最近用上vagrant，叹为神器的同时，它将所有文件全存系统盘的做法，也让我很伤脑筋。很多开发者系统盘用了SSD，相信为此头疼的不只是我一个。
 

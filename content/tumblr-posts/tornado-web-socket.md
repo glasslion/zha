@@ -5,13 +5,14 @@ Category: Python
 Slug: post/57321962100/tornado-web-socket
 Save_as: post/57321962100/tornado-web-socket/index.html
 Tags: tornado
+Summary:
 
-[Python Code]
+**Python Code**
 
 ![images/tornado_websocket_python.png](http://ww2.sinaimg.cn/large/6c3391c1gw1eecw1ldxobj20dw0dw3yx.jpg)
 
 
-[JS Code]
+**JS Code**
 
 ![images/tornado_websocket_js.png](http://ww2.sinaimg.cn/large/6c3391c1gw1eecw1x8oxlj20dw0dwmyk.jpg)
 

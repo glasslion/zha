@@ -1,10 +1,11 @@
-Title: Crate.io 一个更快，更美，更好的pypi
+Title: Crate.io 一个更快，更美，更好的 pypi
 Date: 2013-08-03 23:50:07
 Author: Leonardo Zhou
 Category: Python
 Slug: post/57251711095/crate-io-pypi
 Save_as: post/57251711095/crate-io-pypi/index.html
 Tags: packaging
+Summary: 
 
 Python 程序员几乎每天都会用到 pypi，但 Pypi 的 web 界面实在称不上好看，好用。于是有一帮 Python 程序员坐不住了， 捣鼓出了 crate.io。
 
@@ -29,7 +30,7 @@ Crate.io 托管在上heroku上，访问速度比pypi快。
 --------------------------
 **Updates:**
 
-目前 crate.io 已经无法访问了， 但不用担心，Pypi 的团队已经决定，将在 crate.io 的基础上打造一个全新的 pypi 。 目前还在开发中，预计在2014年上线。
+目前 crate.io 已经无法访问了， Pypi 的团队已经决定，将在 crate.io 的基础上打造一个全新的 pypi 。 目前还在开发中，预计在2014年上线。
 
 新版 pypi 的 github 项目地址: [warehouse][]
 

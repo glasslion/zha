@@ -5,6 +5,7 @@ Category: Python
 Slug: post/58406919860/django
 Save_as: post/58406919860/django/index.html
 Tags: django
+Summary: 手动对 related field 做一次独立的SQL查询，在内存中缓存 related field，从而把 N+M 条 SQL 简化成 2 条 SQL
 
 在Django开发中， 用 `select_related()` 把 item 的 `ForeignKey` 在同一条SQL中通过 join table 一起取出是很常见的做法。但 `select_related` 是不支持 `GenericForeignKey` （主要用于 ContentType）的。
 

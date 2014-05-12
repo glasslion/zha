@@ -4,7 +4,7 @@ Author: Leonardo Zhou
 Category: Python
 Slug: post/55431622560/python
 Save_as: post/55431622560/python/index.html
-
+Summary: I love generators. 
 
 ![images/python_vs_ java_loop.png](http://ww4.sinaimg.cn/large/6c3391c1gw1eecwl0oosej20dw0dw3z7.jpg)
 
