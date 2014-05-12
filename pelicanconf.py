@@ -49,6 +49,9 @@ DIRECT_TEMPLATES = (('blog', 'tags', 'categories', 'archives'))
 PAGINATED_DIRECT_TEMPLATES = (('blog',))
 
 PLUGINS = [summary, assets]
+ASSET_BUNDLES = (
+    ('styles_less', ['css/styles.less'], {'filters': 'less'}),
+)
 
 SUMMARY_MAX_LENGTH = 20
 
