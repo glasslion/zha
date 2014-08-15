@@ -38,4 +38,6 @@ nosetests.xml
 
 # Pelican
 output
+cache
 official_plugins
+plugins/.*
