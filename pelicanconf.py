@@ -11,12 +11,9 @@ BASE_DIR = os.path.dirname(__file__)
 # (https://github.com/getpelican/pelican-plugins)
 sys.path.append(os.path.join(BASE_DIR, "official_plugins"))
 
-import summary, assets
-
 AUTHOR = u'Leonardo Zhou'
-SITE_CHINESE_NAME =  u'翼图南'
-SITE_ENGLISH_NAME = u'Wings towards the south'
-SITENAME = SITE_CHINESE_NAME
+SITENAME = u'翼图南'
+SITE_DESCRIPTION = u'故九萬里，則風斯在下矣，而後乃今培風；背負青天而莫之夭閼者，而後乃今將圖南'
 SITEURL = ''
 
 TIMEZONE = 'Asia/Shanghai'
@@ -28,9 +25,6 @@ FEED_ALL_ATOM = None
 CATEGORY_FEED_ATOM = None
 TRANSLATION_FEED_ATOM = None
 
-# Blogroll
-LINKS =  (
-)
 
 # Social widget
 SOCIAL = (
@@ -45,17 +39,18 @@ LOCALE = ('usa', 'en_US.utf8')
 
 DEFAULT_DATE_FORMAT = '%b %d, %Y'
 
-DIRECT_TEMPLATES = (('blog', 'tags', 'categories', 'archives'))
-PAGINATED_DIRECT_TEMPLATES = (('blog',))
+# DIRECT_TEMPLATES = ('index', 'tags', 'categories', 'archives')
+# PAGINATED_DIRECT_TEMPLATES = (('blog',))
 
-PLUGINS = [summary, assets]
+PLUGINS = ['summary', 'assets', 'neighbors']
+
 ASSET_BUNDLES = (
-    ('styles_less', ['css/styles.less'], {'filters': 'less'}),
+    ('styles_less', ['css/styles.less', 'css/responsive.less', 'css/grid.less'], {'filters': 'less',}),
 )
 
 SUMMARY_MAX_LENGTH = 20
 
-DEFAULT_PAGINATION = 10
+DEFAULT_PAGINATION = 5
 
 # Uncomment following line if you want document-relative URLs when developing
 RELATIVE_URLS = True
@@ -68,13 +63,16 @@ EXTRA_PATH_METADATA = {'extra/CNAME': {'path': 'CNAME'},}
 ARTICLE_URL = '{slug}/'
 ARTICLE_SAVE_AS = '{slug}/index.html'
 
+
+# Archive
+YEAR_ARCHIVE_SAVE_AS = 'archives/{date:%Y}/index.html'
+MONTH_ARCHIVE_SAVE_AS = 'archives/{date:%Y}/{date:%m}/index.html'
+
+
 # Custom theme
 THEME = '../pelican-zha'
-MENUITEMS = (
-    ('blog', '/blog.html'),
-)
+
 CURRENT_DATETIME = datetime.now()
 
 QINIU_BUCKET_URL = 'http://wing2south.qiniudn.com'
 CDN_URL = SITEURL
-
