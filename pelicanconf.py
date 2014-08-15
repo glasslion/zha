@@ -44,9 +44,10 @@ DEFAULT_DATE_FORMAT = '%b %d, %Y'
 
 PLUGINS = ['summary', 'assets', 'neighbors']
 
-ASSET_BUNDLES = (
-    ('styles_less', ['css/styles.less', 'css/responsive.less', 'css/grid.less'], {'filters': 'less',}),
-)
+
+# Assets
+ASSET_BUNDLES = ()
+ASSET_CONFIG = (('sass_bin', 'sass'), )
 
 SUMMARY_MAX_LENGTH = 20
 
