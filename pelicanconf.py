@@ -34,6 +34,7 @@ SOCIAL = (
     ('stack-overflow', 'http://stackoverflow.com/users/1093020/leonardo-z'),
 )
 
+GOOGLE_ANALYTICS = "UA-42951023-1"
 
 LOCALE = ('usa', 'en_US.utf8')
 
