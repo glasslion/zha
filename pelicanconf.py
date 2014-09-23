@@ -78,3 +78,5 @@ CURRENT_DATETIME = datetime.now()
 
 QINIU_BUCKET_URL = 'http://wing2south.qiniudn.com'
 CDN_URL = SITEURL
+
+AUTORELOAD_IGNORE_CACHE = True
