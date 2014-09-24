@@ -570,28 +570,53 @@ h1, h2 {
 
 <div id="cd-timeline" class="cd-container" style="display:body" markdown='1'>
 ## distutils-sig 工作组成立
-The distutils-sig dicussion list was created to discuss the development of distutils.
+最初，Python 并没有自带的包管理器。 纯 Python 的模块（module）往往是通过直接拷贝源代码到相应目录来安装的。 如果要发布的模块包含 C extension ，那么还要写一个冗长的 `Makefile`。 导致程序员之间想要共享模块很不方便。
+
+在 1998年的 Pycon 上， 终于有人 hold 不住了， Greg Ward 作了一场名为 "Building Extensions Considered Painful" 的演讲，引起了很多与会者的共鸣。 于是会后他们建立了 distutils-sig 工作组和同名的邮件列表，专门用来讨论开发 Python 包管理系统的相关事宜。
 
 *1998年*
 
 ## disutils 被纳入 Python 标准库
-distutils was added to the Python standard library in Python 1.6.
+历时2年的开发后，distutils 终于修成正果，被添加到 Python 1.6 的标准库中。从此 Python 社区有了自己的 包管理库。
+
+`Disutils` 使用 `setup.py` 作为 模块的配置文件， 并通过 `python setup.py CMD` 的形式， 提供了一套用于编译 C extension, 打包 ... 的命令
+
+尽管用今天的眼光来看，`Disutils` 有很多不足 。但在当时 `Disutils` 确实是一个十分出色的包管理系统。由于吸取了Perl 社区1在`Makefile.PL` 上的教训，且为了更好地跨平台， `Disutils` 没有基于当时盛行的 Makefile。`Disutils` 充分运用了 Python 简明而又强大的特性， 没有为了 Packaging 去单独研发一套 DSL， `setup.py` 就是一个 普通的 Python 文件。
 
 *2000年*
 
-## PyPI 上线
-PyPI was up and running.
+## catalog-sig 工作组成立
+当时 Perl 社区 的 CPAN 运营的非常成功。 眼红的 Pythonista 们也开始着手创建 Python 的公共第三方模块库
+
+*2002年*
+
+## PEP 241 Metadata for Python Software Packages
+`A.M. Kuchling` 起草了 PEP 241,用于规范 Python Package 的元信息
+
+*2001年*
+
+## PEP 301 Package Index and Metadata for Distutils
+`PEP 301` 是 `PEP 241` 的补充。约定了元信息 该以怎样的格式被存储在 `setup.py` 中， 来让 `disutils` 和 `PyPI` 识别。
+
+*2002年*
+
+## PyPI 正式上线
+Python Package Index(PyPI) 最初也被叫做 Cheeseshop。时至今日， PyPI 已经收录近 5万个 第三方开源模块。
+`Disutils` 也做了相应的升级，以支持元数据和上传 Python Package 到 PyPI。
 
 *2003年*
 
 ## setuptools 发布
 
-`setuptools` 是由 
+ `setuptools` 是由 Phillip Eby 开发的。
+
+*2004年*
 
 ## distribute
 有很长一段时间。 
 
 ## PyPA 成立
+
 
 </div>
 
