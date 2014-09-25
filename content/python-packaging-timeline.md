@@ -1,7 +1,7 @@
 Title: Python Packaging Timeline
 Author: Leonardo Zhou
 Category: Python
-Date: 2014-03-18 14:05:00
+Date: 2014-04-16 20:57:00
 Slug: post/python-packaging-timeline
 save_as: post/python-packaging-timeline/index.html
 Tags: packaging
@@ -588,7 +588,7 @@ h1, h2 {
 ## catalog-sig 工作组成立
 当时 Perl 社区 的 CPAN 运营的非常成功。 眼红的 Pythonista 们也开始着手创建 Python 的公共第三方模块库
 
-*2002年*
+*2000年*
 
 ## PEP 241 Metadata for Python Software Packages
 `A.M. Kuchling` 起草了 PEP 241,用于规范 Python Package 的元信息
@@ -612,12 +612,77 @@ Python Package Index(PyPI) 最初也被叫做 Cheeseshop。时至今日， PyPI 
 
 *2004年*
 
+## virtualenv 发布
+最初， 所有的 Python Package 都是安装在系统的全局 `site-packages` 目录下。开发者要安装第三方库，常常要有 `root` 权限。不同项目安装的第三方库也容易导致版本冲突。Ian Bicking 开发了 `virtualenv ` 用于创建独立的 Python 运行环境。virtualenv 和 pip 应该是每个 Python 程序员熟知的工具， 这里就不再赘述了。
+
+*2007年*
+
+## pip 发布
+
+`pip` 同样是由 Ian Bicking 开发。
+
+*2008年*
+
 ## distribute
-有很长一段时间。 
+
+`setuptools` 很快就成为 Python 社区中首选的包管理库。但是正当 `setuptools` 如日中天的时候，它的开发却嘎然而止。 明明有一大堆 pull request 在等待 merge, 开发者却杳无音信。Python 3 的支持也迟迟不加。 最终 Tarek Ziade 从 `setuptools` fork 出了 `distribute`。
+
+虽然 `distribute` 在各方面都优于 `setuptools`， 但 `setuptools` 毕竟盛名在外，Python 社区 从  `setuptools` 转移到 `distribute` 上话了很长时间， 并造成了一定的社区分裂。
+
+`2008年`
 
 ## PyPA 成立
 
+`2011年 2月 28日`
 
+
+## Distutils2 的开发被终止
+曾被寄予厚望的 `disutils2`，没能按原计划在随 Python 3.3. 发布。
+
+`disutils2` 项目失败的原因有很多。 `disutils2` 的开发者人数只有 1-2 名，而且都是在用业余时间开发, 由于开发者没有足够的精力， 开发经常陷入停滞。项目也十分缺少 beta 用户，也很少得到用户的反馈。
+
+`2011年 2月 28日`
+
+## Pycon 2013 - Directions for Packaging
+由于 `disutils2` 项目被放弃，对开发者而言， 未来的 Python Packaing 会是怎么样是个未知数。
+
+ 于是趁着 Python 程序员的年度盛会 Pycon 的召开，PyPA 设法让 `distributue`,  `virtualenv`, `pip`, `wheel`,  `PyPI`,  `zc.buildout` 等项目的开发者们齐聚一堂, 共同讨论和规划 Python Packaging 未来的开发路线。
+[Youtube 视频](https://www.youtube.com/watch?v=ePFWp3oSfyU)
+
+`2013年 3月 15日`
+
+
+## PyPI 有了 CDN 加速
+Fastly 公司很慷慨地为 PyPI 提供了免费的 CDN 加速。
+
+天朝用户应该对此印象十分深刻， 这倒不是因为有了 CDN 之后访问速度变快了。2014年上半年有一段时间 PyPI无法正常访问就是拜某墙所赐。
+
+`2013年 5月 26日`
+
+## Distribute 项目被 merge 回了 setuptools
+
+`2013年 6月 9日`
+
+## pip 成为 Python 3.4 自带的包管理库
+让我们看个冷笑话吧：
+
+甲： Python 的包管理工具是什么？ 
+
+乙：`pip`
+
+甲：pip` 是 Python 自带的吗？
+
+乙：不是。 甲：那么我应该怎么安装 pip ? 
+
+乙： `easy_install pip`
+
+甲：`easy_install` 是什么？
+
+乙：一个 Python 包管理工具
+
+甲：...
+
+`2013年 8月 10日`
 </div>
 
 <script type="text/javascript" src="//upcdn.b0.upaiyun.com/libs/jquery/jquery-2.0.3.min.js"></script>
