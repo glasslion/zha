@@ -1,5 +1,5 @@
 # official requirements
-pelican
+pelican==3.5.0
 Markdown
 Fabric
 
@@ -10,8 +10,8 @@ ghp-import
 # some webassets filters can not be installed with pip,
 # thet needd to be install with other tools like npm (e.g npm install uglify-js)
 # More instructions can be found at http://webassets.readthedocs.org/en/latest/builtin_filters.html
-webassets
-cssmin
+webassets==0.10.1
+cssmin==0.2.0
 
 # qiniu statics hosting
 sevencow
