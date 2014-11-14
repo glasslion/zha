@@ -80,3 +80,8 @@ QINIU_BUCKET_URL = 'http://wing2south.qiniudn.com'
 CDN_URL = SITEURL
 
 AUTORELOAD_IGNORE_CACHE = True
+
+# Hacks to make teh asset plugin work with Pelican 3.5
+# https://github.com/getpelican/pelican/issues/1523
+# https://github.com/iKevinY/iKevinY.github.io/commit/872a2b3
+ASSET_SOURCE_PATHS = ['static']
