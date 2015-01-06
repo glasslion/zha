@@ -1,3 +1,4 @@
 User-Agent: *
 Disallow: 
-Disallow: /files/CV.pdf
+Disallow: /files/cv.pdf
+Disallow: /cv.htm
