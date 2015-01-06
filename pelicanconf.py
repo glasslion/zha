@@ -26,14 +26,6 @@ CATEGORY_FEED_ATOM = None
 TRANSLATION_FEED_ATOM = None
 
 
-# Social widget
-SOCIAL = (
-    ('twitter', 'https://twitter.com/glasslion'),
-    ('envelope', 'mailto:glasslion@gmail.com'),
-    ('github', 'https://github.com/glasslion'),
-    ('stack-overflow', 'http://stackoverflow.com/users/1093020/leonardo-z'),
-)
-
 GOOGLE_ANALYTICS = "UA-42951023-1"
 
 LOCALE = ('usa', 'en_US.utf8')
@@ -88,3 +80,15 @@ AUTORELOAD_IGNORE_CACHE = True
 # https://github.com/getpelican/pelican/issues/1523
 # https://github.com/iKevinY/iKevinY.github.io/commit/872a2b3
 ASSET_SOURCE_PATHS = ['static']
+
+LINKS = (
+    ('CV', '/cv.htm'),
+)
+
+SOCIAL = (
+    ('Twitter', 'https://twitter.com/glasslion'),
+    ('GitHub', 'https://github.com/glasslion'),
+    ('StackOverflow', 'http://stackoverflow.com/users/1093020/leonardo-z'),
+    (u'微信二维码', '/images/wechat.jpg'),
+
+)
