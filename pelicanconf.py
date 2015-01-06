@@ -58,8 +58,11 @@ DEFAULT_PAGINATION = 5
 RELATIVE_URLS = True
 
 # Static content
-STATIC_PATHS = ['images', 'extra/CNAME',]
-EXTRA_PATH_METADATA = {'extra/CNAME': {'path': 'CNAME'},}
+STATIC_PATHS = ['images', 'files', 'extra/CNAME', 'extra/robots.txt', ]
+EXTRA_PATH_METADATA = {
+    'extra/CNAME': {'path': 'CNAME'},
+    'extra/robots.txt': {'path': 'robots.txt'},
+}
 
 # Url
 ARTICLE_URL = '{slug}/'
