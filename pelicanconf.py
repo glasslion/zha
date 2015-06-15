@@ -4,6 +4,7 @@ from __future__ import unicode_literals
 from datetime import datetime
 import os
 import sys
+import time
 
 BASE_DIR = os.path.dirname(__file__)
 
@@ -43,7 +44,7 @@ DEFAULT_DATE_FORMAT = '%b %d, %Y'
 # DIRECT_TEMPLATES = ('index', 'tags', 'categories', 'archives')
 # PAGINATED_DIRECT_TEMPLATES = (('blog',))
 
-PLUGINS = ['summary', 'assets', 'neighbors']
+PLUGINS = ['summary', 'neighbors']
 
 
 # Assets
@@ -75,6 +76,7 @@ MONTH_ARCHIVE_SAVE_AS = 'archives/{date:%Y}/{date:%m}/index.html'
 THEME = '../pelican-zha'
 
 CURRENT_DATETIME = datetime.now()
+TIMESTAMP = time.mktime(CURRENT_DATETIME.timetuple())
 
 QINIU_BUCKET_URL = 'http://wing2south.qiniudn.com'
 CDN_URL = SITEURL

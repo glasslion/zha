@@ -1,0 +1,16 @@
+language: python
+python:
+- '2.7'
+branches:
+  only:
+  - master
+install:
+- pip install -r requirements
+script:
+- git clone https://github.com/getpelican/pelican-plugins.git official_plugins
+- git clone -b graphy https://github.com/glasslion/pelican-zha.git ../pelican-zha
+after_success:
+- make github_travis
+env:
+  global:
+    secure: CzRZaDI82eVvpu0inMnYzosepAqD43Caoez4NbxbbcLMeCtQ9WG9FxgG8FIqG5z2mNCuf954osPsFnxm4rqxslNx1axlwoLULIO1e/gcal4wDJo0XfGU+ulzpXmyHoF2pstCnx0GLmwPccvWQJzEDyE95eAPGjSOg+C8pTVRpgn/qnfgYn3SGCXpLfE3sqEKk4XyE4v6xdqGuTOgmCnOshnJrha0oOVd1d5CEx89UylIxxqETk8e7o64hTIr4Iy0+1N+bUqQ3RcBWCG8/Sb5RIqP6ZSCqZM+TYvbZI8ygsuX8wcnknclccDCj3XXYfocKXWegZXZ/JlOJFJYl1Yf9YhlR+HPNBnxD4Izafa1/iLnyFajycJNiDz4EbM6RgqHM6uv0jtjd16lwEwTCgWNFlpsPNGEOqb1JWUqOPAbD7fFsxKAP8pF+xc9FK43gA6fcJM3DHbznwzEuoIntWvBiOJSjyOc0f7yGzBCmNzKmsGNQpeZ+rVWB3feEKTborJkv+j3kHdulEfMlN21qQWkGkNtRIVPPqkyRpk4m+jyeX6P2A9rBNfCsTV6IRE2w0x04xzmviP6j4E4cNjZ64+4+Sa9qx2LWamzOTjcoPQmEh/Pi20IRsZoO2wUAmBOwqKdZ8Xnv72q+zLzOjgBsYD25AuA1nEB01JlDgcNtoBnBC4=
