@@ -37,7 +37,7 @@ def clear_remote_theme_assets():
     file_list = ret['items']
     for fil in file_list:
         ret, info = bucket.delete(BUCKET, fil['key'])
-        if not ret:
+        if ret is None or info.status_code == 612:
             print info
             sys.exit()
 
