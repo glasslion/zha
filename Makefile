@@ -107,6 +107,6 @@ github: publish
 
 github_travis: publish
 	ghp-import $(OUTPUTDIR)
-	@git push -fq https://${GH_TOKEN}@github.com/glasslion/zha-beta.git gh-pages > /dev/null
+	@git push -fq https://${GH_TOKEN}@github.com/glasslion/zha.git gh-pages > /dev/null
 
 .PHONY: html help clean regenerate serve devserver publish ssh_upload rsync_upload dropbox_upload ftp_upload s3_upload cf_upload github
