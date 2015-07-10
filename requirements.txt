@@ -14,4 +14,4 @@ webassets==0.10.1
 cssmin==0.2.0
 
 # qiniu statics hosting
-sevencow
+qiniu==7.0.4
