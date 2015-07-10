@@ -105,13 +105,13 @@ github: publish
 	ghp-import $(OUTPUTDIR)
 	git push origin gh-pages
 
-github_travis: publish
+github_travis:publish
 	ghp-import $(OUTPUTDIR)
-echo $(TRAVIS_BRANCH)
+	echo $(TRAVIS_BRANCH)
 ifeq ($(TRAVIS_BRANCH), master)
-	@git push -fq https://${GH_TOKEN}@github.com/glasslion/zha.git gh-pages > /dev/null
+	@git push -fq https://${GH_TOKEN}@github.com/glasslion/zha.git gh-pages
 else
-	@git push -fq https://${GH_TOKEN}@github.com/glasslion/zha-beta.git gh-pages > /dev/null
+	@git push -fq https://${GH_TOKEN}@github.com/glasslion/zha-beta.git gh-pages
 endif
 
 .PHONY: html help clean regenerate serve devserver publish ssh_upload rsync_upload dropbox_upload ftp_upload s3_upload cf_upload github
