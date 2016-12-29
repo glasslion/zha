@@ -13,4 +13,4 @@ after_success:
 - make github_travis
 env:
   global:
-    secure: "XeSSCP0+2jC75KyRtQsxK3EpLyusY42MZvvy9S9suz3rushftCs+DWqINs+m5Of0GMhrpam0gJi7e6Y//yCWlBDXcGpaK6kRWHWTJwaIVj+Q8To+rQAb2Vm7Z7/xATNY2leMKyWblVBaDu+hcoB5xu7JYN5rWRluF0jsACCcCSU="
+    secure: ES1BnvznN4aK32g8t72z1dz39oXvA30RNtnZPAJhgBvAtm8ImwxImquYB/9A9r2zi9ujWVQdxFxBy6+jLzEvL5i6g393ENZ9uYpSi7SKCrCLPDt4AsVLnxyBw8yw1WD93HRlgYkXBa6tflI+hv1CHbt6EIhoD4o7YdkDGup0ExE=
