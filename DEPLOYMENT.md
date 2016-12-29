@@ -50,5 +50,5 @@ After ckecking http://glasslion.github.io/zha-beta/, we then merge changes into 
 
 *What's inside secure?*
 
-For now, there's only a github token, used to push compiled htmls to Github repo's gh-pages branch.
+For now, there's only a github token, used to push compiled htmls to Github repo's gh-pages branch, token name is `zha_travis_auto_publish`.
 To generate secure: `travis encrypt GH_TOKEN=xxxx --add`
