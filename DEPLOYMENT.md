@@ -39,3 +39,16 @@ cd zha/plugins
 python qiniu-upload.py
 
 ```
+
+
+## travis
+Inspired by [Publish your Pelican blog on Github pages via Travis-CI](http://blog.mathieu-leplatre.info/publish-your-pelican-blog-on-github-pages-via-travis-ci.html), I use travis to auto publish this blog.
+
+To avoid accidental changes, changes made outside the mster branch, is published to [zha-beta](https://github.com/glasslion/zha-beta) repo.
+After ckecking http://glasslion.github.io/zha-beta/, we then merge changes into the master branch and publish to the real site.
+
+
+*What's inside secure?*
+
+For now, there's only a github token, used to push compiled htmls to Github repo's gh-pages branch, token name is `zha_travis_auto_publish`.
+To generate secure: `travis encrypt GH_TOKEN=xxxx --add`
