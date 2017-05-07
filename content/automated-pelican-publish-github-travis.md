@@ -1,10 +1,10 @@
-Title: 
+<!--Title: 
 Author: Leonardo Zhou
 Category: Python
 Date: 2016-12-25 14:36:00
 Slug: post/automated-pelican-publish-github-travis
 save_as: post/automated-pelican-publish-github-travis/index.html
-Tags: pelican
+Tags: pelican-->
 
 **tl;dr | 长话短说**
 
