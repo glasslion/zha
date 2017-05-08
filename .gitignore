@@ -41,3 +41,5 @@ output
 cache
 official_plugins
 plugins/.*
+pelican.pid
+srv.pid
