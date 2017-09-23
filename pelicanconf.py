@@ -111,3 +111,5 @@ SOCIAL = (
 
 MARKUP = ('md', 'ipynb')
 PLUGINS.append('pelican-ipynb.markup')
+
+MD_EXTENSIONS = ['codehilite(css_class=highlight snippet)','extra']
