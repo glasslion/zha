@@ -105,3 +105,9 @@ SOCIAL = (
     (u'微信二维码', '/images/wechat.jpg'),
 
 )
+
+
+# Pelican plugin for Jupyter/IPython Notebooksls
+
+MARKUP = ('md', 'ipynb')
+PLUGINS.append('pelican-ipynb.markup')
