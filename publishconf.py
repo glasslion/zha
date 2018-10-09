@@ -11,9 +11,9 @@ sys.path.append(os.curdir)
 from pelicanconf import *
 
 if os.environ.get('TRAVIS_BRANCH') == 'draft':
-    SITEURL = 'http://wing2south.com'
+    SITEURL = 'https://wing2south.com'
 else:
-    SITEURL = 'http://glasslion.github.io/zha-beta'
+    SITEURL = 'https://glasslion.github.io/zha-beta'
 
 CDN_URL = SITEURL
 
