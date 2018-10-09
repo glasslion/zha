@@ -84,7 +84,6 @@ THEME = '../pelican-zha'
 CURRENT_DATETIME = datetime.now()
 TIMESTAMP = time.mktime(CURRENT_DATETIME.timetuple())
 
-QINIU_BUCKET_URL = 'http://wing2south.qiniudn.com'
 CDN_URL = SITEURL
 
 AUTORELOAD_IGNORE_CACHE = True
