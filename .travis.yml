@@ -9,7 +9,6 @@ install:
 script:
 - git clone https://github.com/getpelican/pelican-plugins.git official_plugins
 - ls official_plugins
-- git clone https://github.com/danielfrg/pelican-ipynb official_plugins/pelican-ipynb
 - git clone https://github.com/glasslion/pelican-zha.git ../pelican-zha
 after_success:
 - make github_travis
