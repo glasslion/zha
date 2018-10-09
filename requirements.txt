@@ -1,6 +1,7 @@
 # official requirements
 pelican==3.5.0
-Markdown
+Markdown==2.6.7
+
 Fabric
 
 # github pages
