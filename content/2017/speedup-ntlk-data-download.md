@@ -1,7 +1,7 @@
 Title: 加速 NLTK 数据包 (NLTK Data) 的下载速度的几种方法
 Author: Leonardo Zhou
 Category: Python
-Date: 2016-05-06 17:27:00
+Date: 2017-05-06 17:27:00
 Slug: post/speedup-ntlk-data-download
 save_as: post/speedup-ntlk-data-download/index.html
 

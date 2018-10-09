@@ -84,7 +84,6 @@ THEME = '../pelican-zha'
 CURRENT_DATETIME = datetime.now()
 TIMESTAMP = time.mktime(CURRENT_DATETIME.timetuple())
 
-QINIU_BUCKET_URL = 'http://wing2south.qiniudn.com'
 CDN_URL = SITEURL
 
 AUTORELOAD_IGNORE_CACHE = True
@@ -105,3 +104,11 @@ SOCIAL = (
     (u'微信二维码', '/images/wechat.jpg'),
 
 )
+
+
+# Pelican plugin for Jupyter/IPython Notebooksls
+
+MARKUP = ('md', 'ipynb')
+PLUGINS.append('pelican-ipynb.markup')
+
+MD_EXTENSIONS = ['codehilite(css_class=highlight snippet)','extra']
