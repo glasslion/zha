@@ -1,6 +1,7 @@
 # official requirements
 pelican==3.5.0
 Markdown==2.6.7
+ipython<5
 
 Fabric
 
