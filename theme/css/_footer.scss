@@ -1,0 +1,42 @@
+/* Base */
+.site-footer {
+    border-top: solid 1px #ddd;
+}
+
+/* Footer Widget */
+.footer-area {
+    border-bottom: solid 1px #ddd;
+    margin-top: 48px;
+}
+
+/* Footer Info */
+.site-info {
+    color: #555;
+    margin: 24px auto;
+    text-align: center;
+}
+.site-copyright {
+    font-size: 14px;
+    margin-bottom: 12px;
+}
+.site-copyright a:hover {
+    color: #111;
+}
+.site-credit {
+    color: #777;
+    font-size: 13px;
+}
+.site-credit a {
+    border-bottom: solid 1px #ccc;
+}
+.site-credit a:hover {
+    color: #333;
+}
+@media screen and (min-width: 780px) {
+    .site-copyright {
+        font-size: 15px;
+    }
+    .site-credit {
+        font-size: 14px;
+    }
+}

@@ -1,0 +1,115 @@
+
+/* Base */
+.comments-area {
+    margin-top: 48px;
+}
+
+/* Comment Header */
+.comments-title,
+.comment-reply-title {
+    font-size: 18px;
+    margin-bottom: 24px;
+}
+@media screen and (min-width: 780px) {
+    .comments-title,
+    .comment-reply-title {
+        font-size: 22px;
+        line-height: 28px;
+    }
+}
+
+/* Comment Structure */
+.comment-list {
+    border-bottom: 1px solid #ddd;
+    list-style: none;
+    margin: 0 0 24px 0;
+}
+.comment-list .children {
+    list-style: none;
+    margin-left: 28px;
+}
+.comment-list .comment-body {
+    border-top: 1px solid #ddd;
+    padding: 24px 15px;
+    position: relative;
+}
+.has-avatars .comment .comment-body {
+    padding-left: 72px;
+}
+.bypostauthor > .comment-body {
+    background: #f8f8f8;
+}
+
+/* Comment Meta */
+.comment-author {
+    font-size: 16px;
+    font-weight: 700;
+    margin-bottom: 2px;
+}
+.comment-author a {
+    color: #333;
+}
+.comment-author a:hover {
+    color: #555;
+}
+.comment-author .avatar {
+    height: 42px;
+    left: 15px;
+    position: absolute;
+    top: 28px;
+    width: 42px;
+}
+.comment-author .says {
+    display: none;
+}
+.comment-metadata {
+    font-size: 14px;
+    line-height: 20px;
+    margin-bottom: 12px;
+}
+.comment-metadata a,
+a.comment-edit-link {
+    color: #777;
+}
+.comment-metadata a:hover,
+a.comment-edit-link:hover {
+    color: #333;
+}
+.comment-edit-link {
+    margin-left: 15px;
+}
+
+/* Comment Body */
+.comment-body .reply a {
+    color: #777;
+    font-size: 14px;
+}
+.comment-body .reply a:hover {
+    color: #333;
+}
+.comment-body .reply a:before {
+    content: "\f412";
+    display: inline-block;
+    -webkit-font-smoothing: antialiased;
+    font: normal 13px/1 Genericons;
+    margin-right: 3px;
+    text-decoration: inherit;
+    vertical-align: middle;
+}
+
+.comment-awaiting-moderation {
+    color: #777;
+}
+
+/* Comment Form */
+.comment-respond {
+    padding-top: 24px;
+    margin-bottom: 48px;
+}
+.comment-respond a {
+    text-decoration: underline;
+}
+#commentform label {
+    display: block;
+}
+

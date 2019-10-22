@@ -1,0 +1,1253 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom"><title>翼图南</title><link href="https://wing2south.com/" rel="alternate"></link><link href="https://wing2south.com/feeds/python.atom.xml" rel="self"></link><id>https://wing2south.com/</id><updated>2017-05-06T17:27:00+08:00</updated><entry><title>加速 NLTK 数据包 (NLTK Data) 的下载速度的几种方法</title><link href="https://wing2south.com/post/speedup-ntlk-data-download/" rel="alternate"></link><published>2017-05-06T17:27:00+08:00</published><updated>2017-05-06T17:27:00+08:00</updated><author><name>Leonardo Zhou</name></author><id>tag:wing2south.com,2017-05-06:post/speedup-ntlk-data-download/</id><summary type="html">&lt;p&gt;NLTK 是一个在 Python 自然语言处理领域里非常流行的的一个包。NLTK 本身的安装比较简单 (如果是缺少编译环境的 Windows 系统， 推荐用 conda 安装 )，教程也比较多， 这里不再赘述。&lt;/p&gt;
+&lt;p&gt;然而要让 NLTK 真正工作起来，我们还需要去网上下载各种语料库、语法库和训练模型。由于网络原因，这个下载过程可能比较耗时，或经常失败。下面就简要介绍几个小技巧来加速这一过程。&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;只下载你需要的数据包&lt;/strong&gt;&lt;/p&gt;
+&lt;p&gt;NLTK 提供了十分丰富的自然语言数据包， 其中大多数体积都比较小，也有少数体积比较大, 会有几个G。 通常你并不需要所有的数据包，只下载那些你需要的， 显然可以快很多。&lt;/p&gt;
+&lt;p&gt;完整的 NLTK Data 列表可以访问 http://www.nltk.org/nltk_data/ 得到。&lt;/p&gt;
+&lt;p&gt;通过 Python shell 下载:&lt;/p&gt;
+&lt;div class="highlight snippet"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="kn"&gt;import&lt;/span&gt; &lt;span class="nn"&gt;nltk&lt;/span&gt;
+&lt;span class="c1"&gt;# nltk.download() 不指定数据包的名字时， 默认下载全部数据&lt;/span&gt;
+&lt;span class="n"&gt;nltk&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;download&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="s1"&gt;&amp;#39;stopwords&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;或者在命令行里运行 &lt;code&gt;python -m nltk.downloader &amp;lt;数据包名&amp;gt;&lt;/code&gt;&lt;/p&gt;
+&lt;p&gt;如果是在桌面环境下执行上述命令的话, NLTK 会弹出一个用 Tkinter 写的 图形化窗口， 可以更加方便地选择要下载的数据包。
+&lt;img alt="nltk_data_path" src="http://wing2south.qiniudn.com/images/nltk_data_path.png" /&gt;&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;通过代理下载&lt;/strong&gt;&lt;/p&gt;
+&lt;p&gt;现在 NLTK 的数据是托管在 Github 上的。 由于一些众做周知的原因， Github 在天朝的网络下时常不太稳定。 考虑到很多程序员都会自备&lt;em&gt;梯子&lt;/em&gt;，我们可以让 NLTK 通过代理来下载软件包。 一个稳定的代理不仅能避免连接被重置而导致的下载失败， 往往也能提高下载速度。&lt;/p&gt;
+&lt;p&gt;在 Python shell 里指定代理：&lt;/p&gt;
+&lt;div class="highlight snippet"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="n"&gt;nltk&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;set_proxy&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="s1"&gt;&amp;#39;http://proxy&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="s1"&gt;&amp;#39;USERNAME&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="s1"&gt;&amp;#39;PASSWORD&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;))&lt;/span&gt;
+&lt;span class="n"&gt;nltk&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;download&lt;/span&gt;&lt;span class="p"&gt;()&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;如果是在命令行里通过 &lt;code&gt;`python -m&lt;/code&gt; 的方式下载的话， 可以通过设置 &lt;code&gt;HTTP_PROXY&lt;/code&gt; 环境变量来指定代理。&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;通过其他工具下载&lt;/strong&gt;&lt;/p&gt;
+&lt;p&gt;当你确实需要某些体积很大的数据包时, 光靠 NLTK 自己提供的下载功能可能就捉襟见肘了(仅针对国内网络而言)。这种情况下， 我们可以借助于 wget/aria2c 这类支持多线程， 断点续传的下载工具。 相关数据包的下载链接可以在 上文中提到  http://www.nltk.org/nltk_data/ 里找到。&lt;/p&gt;
+&lt;p&gt;例如 Brown Corpus 这个数据包 就可以通过 &lt;code&gt;wget https://raw.githubusercontent.com/nltk/nltk_data/gh-pages/packages/corpora/brown.zip&lt;/code&gt; 的方式下载下来。 下载下来 zip 包需要解压到 NLTK 指定的 data 目录的某个子目录下。
+如果是桌面环境， 下载窗口上就会显示 data 目录的路径。 
+&lt;img alt="nltk_packages" src="http://wing2south.qiniudn.com/images/nltk_packages.png" /&gt;&lt;/p&gt;
+&lt;p&gt;如果是命令行环境,可通过下面的代码查看:&lt;/p&gt;
+&lt;div class="highlight snippet"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="kn"&gt;import&lt;/span&gt; &lt;span class="nn"&gt;nltk&lt;/span&gt;
+&lt;span class="n"&gt;nltk&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;data&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;path&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;在我的机器为例，NLTK 的 data 目录是 &lt;code&gt;~/nltk_data&lt;/code&gt; 。 注意刚才的下载 url 是以 &lt;code&gt;corpora/brown.zip&lt;/code&gt; 结尾的， 暗示这是一个 corpora (语料)， 因此这个 zip 文件就要解药到  &lt;code&gt;~/nltk_data/corpora&lt;/code&gt; 目录下。 同理， Grammars from NLTK Book(&lt;code&gt;https://raw.githubusercontent.com/nltk/nltk_data/gh-pages/packages/grammars/book_grammars.zip&lt;/code&gt;) 就要解压到 &lt;code&gt;~/nltk_data/grammars&lt;/code&gt; 目录下。&lt;/p&gt;
+&lt;p&gt;有少数包的下载地址不符合上述规则，如 PanLex Lite Corpus(https://db.panlex.org/panlex_lite-20170401.zip)， 这类数据包一般都是体积较大， 不能托管在 Github 上的， 这类包一般都属于 corpora。&lt;/p&gt;</summary></entry><entry><title>利用 Travis CI + Github 给静态博客加上草稿和编辑预览功能</title><link href="https://wing2south.com/post/advanced-pelican-publish-github-travis/" rel="alternate"></link><published>2016-12-25T14:36:00+08:00</published><updated>2016-12-25T14:36:00+08:00</updated><author><name>Leonardo Zhou</name></author><id>tag:wing2south.com,2016-12-25:post/advanced-pelican-publish-github-travis/</id><summary type="html">&lt;p&gt;最近几年，静态博客超越 wordpress。 在程序员社区， 利用 Github Pages 来托管静态博客更是风靡一时。 其中不少人也开始使用持续集成工具 Travis CI 来自动构建和发布博客。&lt;/p&gt;
+&lt;p&gt;本文介绍了一种使用持续集成工具 Travis CI 来实现自动化发布 Pelican 静态博客到 Github Page.s 的方法。在完成本文所述的配置后，你可以抛开 Python、命令行, 只通过 Github 就能编辑， 发布自己的博客。 通过 git branch 和 Pull request还能实现传统动态博客的草稿和预览功能。&lt;/p&gt;
+&lt;p&gt;想不予， 如今静态博客。
+dao到。&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;Travis CI 是什么？&lt;/strong&gt;
+Travis CI 是一款和 Github 紧密结合的持续集成(CI) 工具。 当你的代码被提交到 Github 后， 会触发 Travis CI 的 webhook, Travis CI 就会自动去执行一些操作， 通常是运行单元测试。当然这种操作并不仅限于单元测试， 实际上你可以用它来执行几乎任何命令。 由于很多静态博客的源文件(例如 markdown) 就是托管在 Github 上， 并使用 Github Pages 发布的， 利用 Travis CI 来自动生成静态博客文件并上传到 Github Pages 就成了一件很自然的事情。通过搜索引擎， 我们可以搜到这方面大量的使用案例。本文碍于篇幅， 这里就不介绍从头搭建一个 Travis CI+ Github 博客的步骤了。 下面推荐的几篇教程都还不错不错， 可以参考: &lt;a href="http://www.jianshu.com/p/e22c13d85659"&gt;手把手教你使用Travis CI自动部署你的Hexo博客到Github上&lt;/a&gt;、 &lt;a href="https://blog.m157q.tw/posts/2016/05/08/use-travis-ci-to-publish-pelican-blog-on-github-pages-automatically/"&gt;用 Travis CI 自動化發佈 Pelican blog 到 GitHub Pages 上&lt;/a&gt;、&lt;a href="http://blog.mathieu-leplatre.info/publish-your-pelican-blog-on-github-pages-via-travis-ci.html"&gt;Publish your Pelican blog on Github pages via Travis-CI&lt;/a&gt;。不同的静态博客工具的配置过程会略有不同， 你也可以用。&lt;/p&gt;
+&lt;p&gt;然而我还是觉得有必要要强调下网上这类教程普遍存在的一个问题: &lt;strong&gt;忽视安全!!!&lt;/strong&gt;
+把博客发布到 Github Page 上的过程说白了就是把 html 文件提交到某个 Github repo 的 gh-page 分支。 要让 Travis CI 能提交文件
+- 不加密。
+- 把使用&lt;/p&gt;
+&lt;h2&gt;在线预览&lt;/h2&gt;
+&lt;p&gt;实在有些&lt;em&gt;鸡肋&lt;/em&gt;。 如果你的本机已经有了 Pelican 的构建环境的话， 构建静态博客并上传到 Github 应该会非常容易。 只要运行 &lt;code&gt;make github&lt;/code&gt; 就行了，速度也比去 Travis CI 绕一圈快的多。
+， 这种情况下&lt;/p&gt;
+&lt;p&gt;这种情况下， 你无法。 虽然 Markdown 格式， 语法十分简单。&lt;/p&gt;
+&lt;p&gt;由于每个 Github repo 只能拥有一个 Github Pages 分支(gh-pages), 我们需要新建一个新的 repo 来存放预览分支。&lt;/p&gt;</summary><category term="pelican"></category></entry><entry><title>REST Client 拾遗</title><link href="https://wing2south.com/post/rest-client-tips/" rel="alternate"></link><published>2015-02-27T20:15:00+08:00</published><updated>2015-02-27T20:15:00+08:00</updated><author><name>Leonardo Zhou</name></author><id>tag:wing2south.com,2015-02-27:post/rest-client-tips/</id><summary type="html">&lt;p&gt;Restful Service 早已不是什么新鲜玩意。 国内很多公司都提供基于 REST 的服务， 其中不少还有官方提供的 多语言 SDK。先不论这些 REST API 的设计， 那些SDK/REST Client 往往并不好用， 在 github 上也能找到大量改良的 fork。这里就分享一些我关于写好 REST Client 的愚见。&lt;/p&gt;
+&lt;h3&gt;REST Client 不是 url 拼接器&lt;/h3&gt;
+&lt;p&gt;相当多的 REST Client 说简单了，就做一件事:&lt;/p&gt;
+&lt;div class="highlight snippet"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="kn"&gt;import&lt;/span&gt; &lt;span class="nn"&gt;request&lt;/span&gt;
+&lt;span class="k"&gt;class&lt;/span&gt; &lt;span class="nc"&gt;Client&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="nb"&gt;object&lt;/span&gt;&lt;span class="p"&gt;):&lt;/span&gt;
+    &lt;span class="k"&gt;def&lt;/span&gt; &lt;span class="nf"&gt;post&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="bp"&gt;self&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;url&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;data&lt;/span&gt;&lt;span class="p"&gt;):&lt;/span&gt;
+        &lt;span class="n"&gt;r&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;request&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;post&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;url&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;data&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+        &lt;span class="k"&gt;return&lt;/span&gt; &lt;span class="n"&gt;r&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;json&lt;/span&gt;&lt;span class="p"&gt;()&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;REST Client 返回给用户的应该是解析好的，有意义的对象， 而不是原始的 JSON。这些对象应该提供一些数据操作接口，可以方便地修改对象所对应的数据。 &lt;/p&gt;
+&lt;p&gt;以新浪微博 API 为例， 官方推荐的 &lt;a href="https://github.com/michaelliao/sinaweibopy"&gt;Python SDK&lt;/a&gt; 只是把 &lt;code&gt;HTTP GET： statuses/user_timeline&lt;/code&gt; 这个请求包装成了 &lt;code&gt;client.statuses.user_timeline.get()&lt;/code&gt; 这样的函数调用。这样的 Client 写起来很简单， 单个文件就可以搞定， 但对用户却不友好。譬如收藏评论这样简单的操作， 用户也要不断去翻 新浪微博 API 文档， 并手动拼接出正确的 API URL。&lt;/p&gt;
+&lt;p&gt;相比之下， 另一个微博 &lt;a href="https://github.com/wuyuntao/weibopy"&gt;Client&lt;/a&gt;， 只对 API 返回的实体做了简单的抽象，就已经极大提高 Client 的易用性。扫一眼下面的代码， 不看文档， 我也知道怎样用代码刷微博了。
+ Anyway， REST API 是给机器用的， REST Client 是给人用的。&lt;/p&gt;
+&lt;p&gt;e.g.&lt;/p&gt;
+&lt;div class="highlight snippet"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;# &lt;span class="nv"&gt;https&lt;/span&gt;:&lt;span class="o"&gt;//&lt;/span&gt;&lt;span class="nv"&gt;github&lt;/span&gt;.&lt;span class="nv"&gt;com&lt;/span&gt;&lt;span class="o"&gt;/&lt;/span&gt;&lt;span class="nv"&gt;wuyuntao&lt;/span&gt;&lt;span class="o"&gt;/&lt;/span&gt;&lt;span class="nv"&gt;weibopy&lt;/span&gt;
+&lt;span class="nv"&gt;class&lt;/span&gt; &lt;span class="nv"&gt;Comments&lt;/span&gt;&lt;span class="ss"&gt;(&lt;/span&gt;&lt;span class="nv"&gt;Model&lt;/span&gt;&lt;span class="ss"&gt;)&lt;/span&gt;:
+    &lt;span class="nv"&gt;def&lt;/span&gt; &lt;span class="nv"&gt;destroy&lt;/span&gt;&lt;span class="ss"&gt;(&lt;/span&gt;&lt;span class="nv"&gt;self&lt;/span&gt;&lt;span class="ss"&gt;)&lt;/span&gt;:
+        &lt;span class="k"&gt;return&lt;/span&gt; &lt;span class="nv"&gt;self&lt;/span&gt;.&lt;span class="nv"&gt;_api&lt;/span&gt;.&lt;span class="nv"&gt;destroy_status&lt;/span&gt;&lt;span class="ss"&gt;(&lt;/span&gt;&lt;span class="nv"&gt;self&lt;/span&gt;.&lt;span class="nv"&gt;id&lt;/span&gt;&lt;span class="ss"&gt;)&lt;/span&gt;
+
+    &lt;span class="nv"&gt;def&lt;/span&gt; &lt;span class="nv"&gt;retweet&lt;/span&gt;&lt;span class="ss"&gt;(&lt;/span&gt;&lt;span class="nv"&gt;self&lt;/span&gt;&lt;span class="ss"&gt;)&lt;/span&gt;:
+        &lt;span class="k"&gt;return&lt;/span&gt; &lt;span class="nv"&gt;self&lt;/span&gt;.&lt;span class="nv"&gt;_api&lt;/span&gt;.&lt;span class="nv"&gt;retweet&lt;/span&gt;&lt;span class="ss"&gt;(&lt;/span&gt;&lt;span class="nv"&gt;self&lt;/span&gt;.&lt;span class="nv"&gt;id&lt;/span&gt;&lt;span class="ss"&gt;)&lt;/span&gt;
+
+    &lt;span class="nv"&gt;def&lt;/span&gt; &lt;span class="nv"&gt;retweets&lt;/span&gt;&lt;span class="ss"&gt;(&lt;/span&gt;&lt;span class="nv"&gt;self&lt;/span&gt;&lt;span class="ss"&gt;)&lt;/span&gt;:
+        &lt;span class="k"&gt;return&lt;/span&gt; &lt;span class="nv"&gt;self&lt;/span&gt;.&lt;span class="nv"&gt;_api&lt;/span&gt;.&lt;span class="nv"&gt;retweets&lt;/span&gt;&lt;span class="ss"&gt;(&lt;/span&gt;&lt;span class="nv"&gt;self&lt;/span&gt;.&lt;span class="nv"&gt;id&lt;/span&gt;&lt;span class="ss"&gt;)&lt;/span&gt;
+
+    &lt;span class="nv"&gt;def&lt;/span&gt; &lt;span class="nv"&gt;favorite&lt;/span&gt;&lt;span class="ss"&gt;(&lt;/span&gt;&lt;span class="nv"&gt;self&lt;/span&gt;&lt;span class="ss"&gt;)&lt;/span&gt;:
+        &lt;span class="k"&gt;return&lt;/span&gt; &lt;span class="nv"&gt;self&lt;/span&gt;.&lt;span class="nv"&gt;_api&lt;/span&gt;.&lt;span class="nv"&gt;create_favorite&lt;/span&gt;&lt;span class="ss"&gt;(&lt;/span&gt;&lt;span class="nv"&gt;self&lt;/span&gt;.&lt;span class="nv"&gt;id&lt;/span&gt;&lt;span class="ss"&gt;)&lt;/span&gt;
+
+&lt;span class="nv"&gt;class&lt;/span&gt; &lt;span class="nv"&gt;User&lt;/span&gt;&lt;span class="ss"&gt;(&lt;/span&gt;&lt;span class="nv"&gt;Model&lt;/span&gt;&lt;span class="ss"&gt;)&lt;/span&gt;:
+
+    &lt;span class="nv"&gt;def&lt;/span&gt; &lt;span class="nv"&gt;timeline&lt;/span&gt;&lt;span class="ss"&gt;(&lt;/span&gt;&lt;span class="nv"&gt;self&lt;/span&gt;, &lt;span class="o"&gt;**&lt;/span&gt;&lt;span class="nv"&gt;kargs&lt;/span&gt;&lt;span class="ss"&gt;)&lt;/span&gt;:
+        &lt;span class="k"&gt;return&lt;/span&gt; &lt;span class="nv"&gt;self&lt;/span&gt;.&lt;span class="nv"&gt;_api&lt;/span&gt;.&lt;span class="nv"&gt;user_timeline&lt;/span&gt;&lt;span class="ss"&gt;(&lt;/span&gt;&lt;span class="nv"&gt;user_id&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="nv"&gt;self&lt;/span&gt;.&lt;span class="nv"&gt;id&lt;/span&gt;, &lt;span class="o"&gt;**&lt;/span&gt;&lt;span class="nv"&gt;kargs&lt;/span&gt;&lt;span class="ss"&gt;)&lt;/span&gt;
+
+    &lt;span class="nv"&gt;def&lt;/span&gt; &lt;span class="nv"&gt;friends&lt;/span&gt;&lt;span class="ss"&gt;(&lt;/span&gt;&lt;span class="nv"&gt;self&lt;/span&gt;, &lt;span class="o"&gt;**&lt;/span&gt;&lt;span class="nv"&gt;kargs&lt;/span&gt;&lt;span class="ss"&gt;)&lt;/span&gt;:
+        &lt;span class="k"&gt;return&lt;/span&gt; &lt;span class="nv"&gt;self&lt;/span&gt;.&lt;span class="nv"&gt;_api&lt;/span&gt;.&lt;span class="nv"&gt;friends&lt;/span&gt;&lt;span class="ss"&gt;(&lt;/span&gt;&lt;span class="nv"&gt;user_id&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="nv"&gt;self&lt;/span&gt;.&lt;span class="nv"&gt;id&lt;/span&gt;, &lt;span class="o"&gt;**&lt;/span&gt;&lt;span class="nv"&gt;kargs&lt;/span&gt;&lt;span class="ss"&gt;)&lt;/span&gt;
+
+    &lt;span class="nv"&gt;def&lt;/span&gt; &lt;span class="nv"&gt;followers&lt;/span&gt;&lt;span class="ss"&gt;(&lt;/span&gt;&lt;span class="nv"&gt;self&lt;/span&gt;, &lt;span class="o"&gt;**&lt;/span&gt;&lt;span class="nv"&gt;kargs&lt;/span&gt;&lt;span class="ss"&gt;)&lt;/span&gt;:
+        &lt;span class="k"&gt;return&lt;/span&gt; &lt;span class="nv"&gt;self&lt;/span&gt;.&lt;span class="nv"&gt;_api&lt;/span&gt;.&lt;span class="nv"&gt;followers&lt;/span&gt;&lt;span class="ss"&gt;(&lt;/span&gt;&lt;span class="nv"&gt;user_id&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="nv"&gt;self&lt;/span&gt;.&lt;span class="nv"&gt;id&lt;/span&gt;, &lt;span class="o"&gt;**&lt;/span&gt;&lt;span class="nv"&gt;kargs&lt;/span&gt;&lt;span class="ss"&gt;)&lt;/span&gt;
+
+    &lt;span class="nv"&gt;def&lt;/span&gt; &lt;span class="nv"&gt;follow&lt;/span&gt;&lt;span class="ss"&gt;(&lt;/span&gt;&lt;span class="nv"&gt;self&lt;/span&gt;&lt;span class="ss"&gt;)&lt;/span&gt;:
+        &lt;span class="nv"&gt;self&lt;/span&gt;.&lt;span class="nv"&gt;_api&lt;/span&gt;.&lt;span class="nv"&gt;create_friendship&lt;/span&gt;&lt;span class="ss"&gt;(&lt;/span&gt;&lt;span class="nv"&gt;user_id&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="nv"&gt;self&lt;/span&gt;.&lt;span class="nv"&gt;id&lt;/span&gt;&lt;span class="ss"&gt;)&lt;/span&gt;
+        &lt;span class="nv"&gt;self&lt;/span&gt;.&lt;span class="nv"&gt;following&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="nv"&gt;True&lt;/span&gt;
+
+    &lt;span class="nv"&gt;def&lt;/span&gt; &lt;span class="nv"&gt;unfollow&lt;/span&gt;&lt;span class="ss"&gt;(&lt;/span&gt;&lt;span class="nv"&gt;self&lt;/span&gt;&lt;span class="ss"&gt;)&lt;/span&gt;:
+        &lt;span class="nv"&gt;self&lt;/span&gt;.&lt;span class="nv"&gt;_api&lt;/span&gt;.&lt;span class="nv"&gt;destroy_friendship&lt;/span&gt;&lt;span class="ss"&gt;(&lt;/span&gt;&lt;span class="nv"&gt;user_id&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="nv"&gt;self&lt;/span&gt;.&lt;span class="nv"&gt;id&lt;/span&gt;&lt;span class="ss"&gt;)&lt;/span&gt;
+        &lt;span class="nv"&gt;self&lt;/span&gt;.&lt;span class="nv"&gt;following&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="nv"&gt;False&lt;/span&gt;
+
+    &lt;span class="nv"&gt;def&lt;/span&gt; &lt;span class="nv"&gt;lists_memberships&lt;/span&gt;&lt;span class="ss"&gt;(&lt;/span&gt;&lt;span class="nv"&gt;self&lt;/span&gt;, &lt;span class="o"&gt;*&lt;/span&gt;&lt;span class="nv"&gt;args&lt;/span&gt;, &lt;span class="o"&gt;**&lt;/span&gt;&lt;span class="nv"&gt;kargs&lt;/span&gt;&lt;span class="ss"&gt;)&lt;/span&gt;:
+        &lt;span class="k"&gt;return&lt;/span&gt; &lt;span class="nv"&gt;self&lt;/span&gt;.&lt;span class="nv"&gt;_api&lt;/span&gt;.&lt;span class="nv"&gt;lists_memberships&lt;/span&gt;&lt;span class="ss"&gt;(&lt;/span&gt;&lt;span class="nv"&gt;user&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="nv"&gt;self&lt;/span&gt;.&lt;span class="nv"&gt;screen_name&lt;/span&gt;, &lt;span class="o"&gt;*&lt;/span&gt;&lt;span class="nv"&gt;args&lt;/span&gt;, &lt;span class="o"&gt;**&lt;/span&gt;&lt;span class="nv"&gt;kargs&lt;/span&gt;&lt;span class="ss"&gt;)&lt;/span&gt;
+
+    &lt;span class="nv"&gt;def&lt;/span&gt; &lt;span class="nv"&gt;lists_subscriptions&lt;/span&gt;&lt;span class="ss"&gt;(&lt;/span&gt;&lt;span class="nv"&gt;self&lt;/span&gt;, &lt;span class="o"&gt;*&lt;/span&gt;&lt;span class="nv"&gt;args&lt;/span&gt;, &lt;span class="o"&gt;**&lt;/span&gt;&lt;span class="nv"&gt;kargs&lt;/span&gt;&lt;span class="ss"&gt;)&lt;/span&gt;:
+        &lt;span class="k"&gt;return&lt;/span&gt; &lt;span class="nv"&gt;self&lt;/span&gt;.&lt;span class="nv"&gt;_api&lt;/span&gt;.&lt;span class="nv"&gt;lists_subscriptions&lt;/span&gt;&lt;span class="ss"&gt;(&lt;/span&gt;&lt;span class="nv"&gt;user&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="nv"&gt;self&lt;/span&gt;.&lt;span class="nv"&gt;screen_name&lt;/span&gt;, &lt;span class="o"&gt;*&lt;/span&gt;&lt;span class="nv"&gt;args&lt;/span&gt;, &lt;span class="o"&gt;**&lt;/span&gt;&lt;span class="nv"&gt;kargs&lt;/span&gt;&lt;span class="ss"&gt;)&lt;/span&gt;
+
+    &lt;span class="nv"&gt;def&lt;/span&gt; &lt;span class="nv"&gt;lists&lt;/span&gt;&lt;span class="ss"&gt;(&lt;/span&gt;&lt;span class="nv"&gt;self&lt;/span&gt;, &lt;span class="o"&gt;*&lt;/span&gt;&lt;span class="nv"&gt;args&lt;/span&gt;, &lt;span class="o"&gt;**&lt;/span&gt;&lt;span class="nv"&gt;kargs&lt;/span&gt;&lt;span class="ss"&gt;)&lt;/span&gt;:
+        &lt;span class="k"&gt;return&lt;/span&gt; &lt;span class="nv"&gt;self&lt;/span&gt;.&lt;span class="nv"&gt;_api&lt;/span&gt;.&lt;span class="nv"&gt;lists&lt;/span&gt;&lt;span class="ss"&gt;(&lt;/span&gt;&lt;span class="nv"&gt;user&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="nv"&gt;self&lt;/span&gt;.&lt;span class="nv"&gt;screen_name&lt;/span&gt;, &lt;span class="o"&gt;*&lt;/span&gt;&lt;span class="nv"&gt;args&lt;/span&gt;, &lt;span class="o"&gt;**&lt;/span&gt;&lt;span class="nv"&gt;kargs&lt;/span&gt;&lt;span class="ss"&gt;)&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;h3&gt;没有充分利用缓存&lt;/h3&gt;
+&lt;p&gt;成熟的 REST 服务往往会利用缓存来提高响应速度。许多多 REST 服务（例如 github， heroku, 阿里云 OSS）使用 &lt;code&gt;If-Modified-Since&lt;/code&gt;(Last-Modified) 和 &lt;code&gt;If-None-Match&lt;/code&gt;(ETag) 这两个 HTTP 头来标示缓存信息。一个好的 REST Client 应当在请求时向 Server 端提供这些 HTTP 头。&lt;/p&gt;
+&lt;p&gt;e.g&lt;/p&gt;
+&lt;div class="highlight snippet"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;# &lt;span class="nv"&gt;https&lt;/span&gt;:&lt;span class="o"&gt;//&lt;/span&gt;&lt;span class="nv"&gt;github&lt;/span&gt;.&lt;span class="nv"&gt;com&lt;/span&gt;&lt;span class="o"&gt;/&lt;/span&gt;&lt;span class="nv"&gt;sigmavirus24&lt;/span&gt;&lt;span class="o"&gt;/&lt;/span&gt;&lt;span class="nv"&gt;github3&lt;/span&gt;.&lt;span class="nv"&gt;py&lt;/span&gt;
+&lt;span class="nv"&gt;def&lt;/span&gt; &lt;span class="nv"&gt;refresh&lt;/span&gt;&lt;span class="ss"&gt;(&lt;/span&gt;&lt;span class="nv"&gt;self&lt;/span&gt;, &lt;span class="nv"&gt;conditional&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="nv"&gt;False&lt;/span&gt;&lt;span class="ss"&gt;)&lt;/span&gt;:
+    &lt;span class="nv"&gt;headers&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; {}
+    &lt;span class="k"&gt;if&lt;/span&gt; &lt;span class="nv"&gt;conditional&lt;/span&gt;:
+        &lt;span class="k"&gt;if&lt;/span&gt; &lt;span class="nv"&gt;self&lt;/span&gt;.&lt;span class="nv"&gt;last_modified&lt;/span&gt;:
+            &lt;span class="nv"&gt;headers&lt;/span&gt;[&lt;span class="s1"&gt;&amp;#39;&lt;/span&gt;&lt;span class="s"&gt;If-Modified-Since&lt;/span&gt;&lt;span class="s1"&gt;&amp;#39;&lt;/span&gt;] &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="nv"&gt;self&lt;/span&gt;.&lt;span class="nv"&gt;last_modified&lt;/span&gt;
+        &lt;span class="nv"&gt;elif&lt;/span&gt; &lt;span class="nv"&gt;self&lt;/span&gt;.&lt;span class="nv"&gt;etag&lt;/span&gt;:
+            &lt;span class="nv"&gt;headers&lt;/span&gt;[&lt;span class="s1"&gt;&amp;#39;&lt;/span&gt;&lt;span class="s"&gt;If-None-Match&lt;/span&gt;&lt;span class="s1"&gt;&amp;#39;&lt;/span&gt;] &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="nv"&gt;self&lt;/span&gt;.&lt;span class="nv"&gt;etag&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;h3&gt;跨域问题&lt;/h3&gt;
+&lt;p&gt;出于安全考虑， 浏览器会限制脚本中发起的跨站请求。绕过这个限制的方法也不少，比如 iframe, JSONP, CORS... 其中&lt;a href="https://developer.mozilla.org/zh-CN/docs/Web/HTTP/Access_control_CORS"&gt;跨源资源共享&lt;/a&gt;（Cross-Origin Resource Sharing / CORS) 是比较主流的， 也是 W3C 推荐的一种做法。本文篇幅有限， 其细节可以参考前文所给的链接，接下来让我们专心黑 IE。
+其他浏览器都是在 &lt;code&gt;XMLHttpRequest&lt;/code&gt; 对象上实现了 CORS。 唯独微软在 IE8-IE9 里引入了一个新的对象 &lt;code&gt;XDomainRequest&lt;/code&gt;， 专门处理CORS 请求。 这还是个小坑， 前端可以很容易绕过。最要命的是在 IE10 以前，&lt;code&gt;XDomainRequest&lt;/code&gt; 只支持 GET 和 POST 方法, 而且无法自定义 HTTP Header。于是 PUT， DELETE 方法是不能用了， 要设置 &lt;code&gt;Content-type&lt;/code&gt; 为 &lt;code&gt;application/json&lt;/code&gt; 也不行了。当然解决办法是有的， 比如使用 &lt;a href="https://github.com/jpillora/xdomain"&gt;XDomain&lt;/a&gt;。但这些方法都需要对 Server 端做一定的更改，无法完全在 Client 端加以解决。&lt;/p&gt;
+&lt;p&gt;值得一提的是， Django REST Framework 为此原生提供了一种很简单的 &lt;a href="http://www.django-rest-framework.org/topics/browser-enhancements/"&gt;workaround&lt;/a&gt;。 只要设置了 &lt;code&gt;X-HTTP-Method-Override&lt;/code&gt; 头，DRF 就会将那些本来是 POST 的请求，当作指定的方法处理。&lt;/p&gt;
+&lt;p&gt;e.g.&lt;/p&gt;
+&lt;div class="highlight snippet"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="nx"&gt;$&lt;/span&gt;&lt;span class="p"&gt;.&lt;/span&gt;&lt;span class="nx"&gt;ajax&lt;/span&gt;&lt;span class="p"&gt;({&lt;/span&gt;
+    &lt;span class="nx"&gt;url&lt;/span&gt;&lt;span class="o"&gt;:&lt;/span&gt; &lt;span class="s1"&gt;&amp;#39;/myresource/&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;
+    &lt;span class="nx"&gt;method&lt;/span&gt;&lt;span class="o"&gt;:&lt;/span&gt; &lt;span class="s1"&gt;&amp;#39;POST&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;
+    &lt;span class="nx"&gt;headers&lt;/span&gt;&lt;span class="o"&gt;:&lt;/span&gt; &lt;span class="p"&gt;{&lt;/span&gt;&lt;span class="s1"&gt;&amp;#39;X-HTTP-Method-Override&amp;#39;&lt;/span&gt;&lt;span class="o"&gt;:&lt;/span&gt; &lt;span class="s1"&gt;&amp;#39;PATCH&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;},&lt;/span&gt;
+    &lt;span class="p"&gt;...&lt;/span&gt;
+&lt;span class="p"&gt;});&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;尽管跨域问题只存在浏览器端， 但所有的 Client 也会面临类似的问题： 一些企业内部网络由于代理，防火墙的限制， 无法使用某些特定的 HTTP 方法。 因此 REST Client 在这方面下点功夫还是很有必要。&lt;/p&gt;
+&lt;h2&gt;Finally&lt;/h2&gt;
+&lt;p&gt;在写 REST Client 时会遇到的那些痛点, 很多时候是无法光靠 Client 自身去解决的, 需要服务器端的配合。换个角度看的话，那么Server 端的实现可只能称之为失败。因此我建议那些负责 REST 服务端程序员也去亲自写一下对应 Client 端的代码。对于后端程序员来说， 这并不需要多少前端知识， 你完全可以使用和 Server 端相同的编程语言，我信心这会 带来不少启发。&lt;/p&gt;</summary><category term="rest"></category></entry><entry><title>用 Travis CI 定制多样化的 Python 测试环境</title><link href="https://wing2south.com/post/travisci-multi-python-test-env/" rel="alternate"></link><published>2014-11-13T20:06:00+08:00</published><updated>2014-11-13T20:06:00+08:00</updated><author><name>Leonardo Zhou</name></author><id>tag:wing2south.com,2014-11-13:post/travisci-multi-python-test-env/</id><summary type="html">&lt;p&gt;&lt;a href="https://travis-ci.org/"&gt;Travis CI&lt;/a&gt; 是一项面向 GitHub 用户的持续集成即测试服务。只要是在 GitHub 上开源的项目，经过简单配置， 便可以利用 Travis CI 来进行自动化测试。&lt;/p&gt;
+&lt;p&gt;做过 Python 开源项目开发的大概都曾被和特定 Python 版本相关的 bug 叮过。  现在比较主流的 Python 运行环境就有: Python 2.6, Python 2.7, Python 3.3 和 Python 3.4 这四种。 此外由于 CPython 有GIL 的限制,  近两年来，pypy 也得到了越来越多的关注。尽管目前 Python 3， pypy 在实际产品中还用得比较少， 但对 Python3 的支持已经成为大家在选择第三方库时需要考量的一个相当重要指标。&lt;/p&gt;
+&lt;p&gt;如果是做 Django 开发的话， 测试环境多样化的问题就更加严重了。现在大部分 Django 第三方库都会支持 Django 1.4 -1.7 这 4个版本。和上面提到的 4个 Python 版本组合起来，就有 16种之多( 由于 Django 1.5 以上才支持 Python3, 实际有效的组合会略少）。对于某些项目， 甚至要考虑不同数据库 （MySQL, PostgreSQL, SQLite) 的差异， 那么总的测试环境数又要 X3。&lt;/p&gt;
+&lt;p&gt;尽管通过 &lt;a href="https://github.com/yyuu/pyenv"&gt;pyenv&lt;/a&gt; 和 &lt;a href="http://tox.readthedocs.org/en/latest/"&gt;tox&lt;/a&gt; 这些工具,  在本地安装和测试多版本的 Python 的流程已经被简化了很多。但光是在十几个环境里把测试一一跑一遍就要花费不少时间。从而导致了我们在平时的开发过程中不会经常去运行这些测试。缺乏测试又会让我们无法尽早发现bug。像 unicode/string 相关 bug， 常常是牵一发而动全身， 后期修复的代价比较高。&lt;/p&gt;
+&lt;p&gt;Travis CI 使用 GitHub 项目根目录下的 &lt;code&gt;.travis.yml&lt;/code&gt; 作为其配置文件。从后缀名就可以看出， 其配置文件是 &lt;code&gt;YAML&lt;/code&gt; 格式的。&lt;/p&gt;
+&lt;p&gt;一个简单的例子：&lt;/p&gt;
+&lt;div class="highlight snippet"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="nt"&gt;language&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt; &lt;span class="l l-Scalar l-Scalar-Plain"&gt;python&lt;/span&gt;
+&lt;span class="nt"&gt;python&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt;
+&lt;span class="p p-Indicator"&gt;-&lt;/span&gt; &lt;span class="s"&gt;&amp;#39;2.7&amp;#39;&lt;/span&gt;
+&lt;span class="p p-Indicator"&gt;-&lt;/span&gt; &lt;span class="s"&gt;&amp;#39;2.6&amp;#39;&lt;/span&gt;
+&lt;span class="p p-Indicator"&gt;-&lt;/span&gt; &lt;span class="s"&gt;&amp;#39;3.3&amp;#39;&lt;/span&gt;
+&lt;span class="p p-Indicator"&gt;-&lt;/span&gt; &lt;span class="s"&gt;&amp;#39;3.4&amp;#39;&lt;/span&gt;
+&lt;span class="c1"&gt;# command to install dependencies&lt;/span&gt;
+&lt;span class="nt"&gt;install&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt; &lt;span class="s"&gt;&amp;quot;pip&lt;/span&gt;&lt;span class="nv"&gt; &lt;/span&gt;&lt;span class="s"&gt;install&lt;/span&gt;&lt;span class="nv"&gt; &lt;/span&gt;&lt;span class="s"&gt;-r&lt;/span&gt;&lt;span class="nv"&gt; &lt;/span&gt;&lt;span class="s"&gt;requirements.txt&amp;quot;&lt;/span&gt;
+&lt;span class="c1"&gt;# command to run tests&lt;/span&gt;
+&lt;span class="nt"&gt;script&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt; &lt;span class="l l-Scalar l-Scalar-Plain"&gt;py.test&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;上面的 &lt;code&gt;.travis.yml&lt;/code&gt;  会创建 Python 2.6 - Python 3.4  这 4 个 独立的 Python 测试环境。 在每个环境里，通过 &lt;code&gt;pip install -r requirements.txt&lt;/code&gt; 安装项目所依赖的 Python Package。 &lt;/p&gt;
+&lt;p&gt;&lt;code&gt;script&lt;/code&gt; 用于指定用来执行单元测试的命令。这里我们使用的是  &lt;code&gt;py.test&lt;/code&gt;， 根据个人喜好，你也可以选择 &lt;code&gt;nosetest&lt;/code&gt;, &lt;code&gt;make test&lt;/code&gt;, &lt;code&gt;python setup.py tetst&lt;/code&gt; ... 对于 Python 项目， Travis CI 会自动安装 &lt;code&gt;nose&lt;/code&gt;, &lt;code&gt;pytest&lt;/code&gt;, &lt;code&gt;mock&lt;/code&gt; 这几个常用的测试库。 &lt;/p&gt;
+&lt;p&gt;对于更加复杂的项目， 我们也可以指定多个 &lt;code&gt;install&lt;/code&gt;  命令。
+例如：&lt;/p&gt;
+&lt;div class="highlight snippet"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="nt"&gt;install&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt;
+&lt;span class="p p-Indicator"&gt;-&lt;/span&gt; &lt;span class="l l-Scalar l-Scalar-Plain"&gt;pip install django==$DJANGO_VERSION&lt;/span&gt;
+&lt;span class="p p-Indicator"&gt;-&lt;/span&gt; &lt;span class="l l-Scalar l-Scalar-Plain"&gt;pip install -r requirements.txt&lt;/span&gt;
+&lt;span class="p p-Indicator"&gt;-&lt;/span&gt; &lt;span class="l l-Scalar l-Scalar-Plain"&gt;pip install -e .&lt;/span&gt;
+&lt;span class="l l-Scalar l-Scalar-Plain"&gt;env： DJANGO_VERSION=1.7 SECRET_KEY=&amp;quot;XXXXXXX&amp;quot; FOO=&amp;quot;foo&amp;quot;&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;上面的配置除了安装 requirements.txt 所罗列的 Python Package 外， 还会以 &lt;code&gt;develop&lt;/code&gt; 模式 安装项目根目录下的 &lt;code&gt;setup.py&lt;/code&gt;， 并根据 &lt;code&gt;DJANGO_VERSION&lt;/code&gt; 这个环境变量，安装指定版本的 Django 。&lt;/p&gt;
+&lt;p&gt;如果， &lt;code&gt;env&lt;/code&gt; 指定了多组环境变量， Travis CI 会将 各个版本的 Python 和环境变量组 一一组合。 下面的配置就会生成  4X3， 共12个测试环境。&lt;/p&gt;
+&lt;div class="highlight snippet"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="nt"&gt;python&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt;
+&lt;span class="p p-Indicator"&gt;-&lt;/span&gt; &lt;span class="s"&gt;&amp;#39;2.7&amp;#39;&lt;/span&gt;
+&lt;span class="p p-Indicator"&gt;-&lt;/span&gt; &lt;span class="s"&gt;&amp;#39;2.6&amp;#39;&lt;/span&gt;
+&lt;span class="p p-Indicator"&gt;-&lt;/span&gt; &lt;span class="s"&gt;&amp;#39;3.3&amp;#39;&lt;/span&gt;
+&lt;span class="p p-Indicator"&gt;-&lt;/span&gt; &lt;span class="s"&gt;&amp;#39;3.4&amp;#39;&lt;/span&gt;
+&lt;span class="nt"&gt;install&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt;
+&lt;span class="p p-Indicator"&gt;-&lt;/span&gt; &lt;span class="l l-Scalar l-Scalar-Plain"&gt;pip install -r requirements.txt&lt;/span&gt;
+&lt;span class="p p-Indicator"&gt;-&lt;/span&gt; &lt;span class="l l-Scalar l-Scalar-Plain"&gt;pip install django==$DJANGO_VERSION&lt;/span&gt;
+&lt;span class="p p-Indicator"&gt;-&lt;/span&gt; &lt;span class="l l-Scalar l-Scalar-Plain"&gt;pip install -e .&lt;/span&gt;
+&lt;span class="nt"&gt;env&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt;
+ &lt;span class="p p-Indicator"&gt;-&lt;/span&gt; &lt;span class="l l-Scalar l-Scalar-Plain"&gt;DJANGO_VERSION=1.7&lt;/span&gt;
+ &lt;span class="p p-Indicator"&gt;-&lt;/span&gt; &lt;span class="l l-Scalar l-Scalar-Plain"&gt;DJANGO_VERSION=1.6&lt;/span&gt;
+ &lt;span class="p p-Indicator"&gt;-&lt;/span&gt; &lt;span class="l l-Scalar l-Scalar-Plain"&gt;DJANGO_VERSION=1.5&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;&lt;strong&gt;注&lt;/strong&gt;： 在 &lt;code&gt;env&lt;/code&gt; 列表里， 每一行代表一组环境变量。多个环境变量间用空格隔开。&lt;/p&gt;
+&lt;p&gt;当我们想在每个测试环境中都设置一些环境变量时， 我们就要把 &lt;code&gt;env&lt;/code&gt; 列表显式地拆分成 &lt;code&gt;matrix&lt;/code&gt; 和 &lt;code&gt;global&lt;/code&gt; 两个子列表。 &lt;code&gt;global&lt;/code&gt; 子列表 里的环境变量不参与测试环境的组合。
+ 例：&lt;/p&gt;
+&lt;div class="highlight snippet"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="nt"&gt;env&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt;
+  &lt;span class="nt"&gt;matrix&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt;
+  &lt;span class="p p-Indicator"&gt;-&lt;/span&gt; &lt;span class="l l-Scalar l-Scalar-Plain"&gt;DJANGO_VERSION=1.7&lt;/span&gt;
+  &lt;span class="p p-Indicator"&gt;-&lt;/span&gt; &lt;span class="l l-Scalar l-Scalar-Plain"&gt;DJANGO_VERSION=1.6&lt;/span&gt;
+  &lt;span class="p p-Indicator"&gt;-&lt;/span&gt; &lt;span class="l l-Scalar l-Scalar-Plain"&gt;DJANGO_VERSION=1.5&lt;/span&gt;
+  &lt;span class="nt"&gt;global&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt;
+  &lt;span class="p p-Indicator"&gt;-&lt;/span&gt; &lt;span class="l l-Scalar l-Scalar-Plain"&gt;SECRET_KEY=&amp;quot;XXXXXXX&amp;quot;&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;有时， 难免会遇到一些无效的测试环境组合， 比如 Django 1.7 就不支持 Python 2.6。 这种情况下， 可以用 &lt;code&gt;matrix.exclude&lt;/code&gt; 来排除某些特殊的组合：&lt;/p&gt;
+&lt;div class="highlight snippet"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="nt"&gt;matrix&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt;
+  &lt;span class="nt"&gt;exclude&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt;
+  &lt;span class="p p-Indicator"&gt;-&lt;/span&gt; &lt;span class="nt"&gt;python&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt; &lt;span class="s"&gt;&amp;#39;2.6&amp;#39;&lt;/span&gt;
+    &lt;span class="nt"&gt;env&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt; &lt;span class="l l-Scalar l-Scalar-Plain"&gt;DJANGO_VERSION=1.7&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;总的来说，&lt;code&gt;.travis.yml&lt;/code&gt; 的配置还是简明又不失灵活的， 用的也是标准的 &lt;code&gt;YAML&lt;/code&gt; 语法。如果对 &lt;code&gt;YAML&lt;/code&gt; 不熟， 建议上手Travis CI前，可以先找一份简明的 &lt;code&gt;YAML&lt;/code&gt; 语法说明学习一下， 会起到事半功倍的效果。如果你的 &lt;code&gt;.travis.yml&lt;/code&gt; 存在语法错误，可以用 &lt;a href="http://lint.travis-ci.org/"&gt;Travis WebLint&lt;/a&gt; 来作调试和语法检查。&lt;/p&gt;
+&lt;p&gt;最后 ， 附上我在 &lt;a href="https://github.com/glasslion/django-qiniu-storage"&gt;django-qiniu-storage&lt;/a&gt; 项目中所使用 &lt;code&gt;.travis.yml&lt;/code&gt; 以资参考。&lt;/p&gt;
+&lt;div class="highlight snippet"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="nt"&gt;language&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt; &lt;span class="l l-Scalar l-Scalar-Plain"&gt;python&lt;/span&gt;
+&lt;span class="nt"&gt;python&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt;
+&lt;span class="p p-Indicator"&gt;-&lt;/span&gt; &lt;span class="s"&gt;&amp;#39;2.7&amp;#39;&lt;/span&gt;
+&lt;span class="p p-Indicator"&gt;-&lt;/span&gt; &lt;span class="s"&gt;&amp;#39;2.6&amp;#39;&lt;/span&gt;
+&lt;span class="p p-Indicator"&gt;-&lt;/span&gt; &lt;span class="s"&gt;&amp;#39;3.3&amp;#39;&lt;/span&gt;
+&lt;span class="p p-Indicator"&gt;-&lt;/span&gt; &lt;span class="s"&gt;&amp;#39;3.4&amp;#39;&lt;/span&gt;
+&lt;span class="nt"&gt;install&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt;
+&lt;span class="p p-Indicator"&gt;-&lt;/span&gt; &lt;span class="l l-Scalar l-Scalar-Plain"&gt;pip install -r requirements.txt&lt;/span&gt;
+&lt;span class="p p-Indicator"&gt;-&lt;/span&gt; &lt;span class="l l-Scalar l-Scalar-Plain"&gt;pip install django==$DJANGO_VERSION&lt;/span&gt;
+&lt;span class="p p-Indicator"&gt;-&lt;/span&gt; &lt;span class="l l-Scalar l-Scalar-Plain"&gt;pip install -e .&lt;/span&gt;
+&lt;span class="nt"&gt;script&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt; &lt;span class="l l-Scalar l-Scalar-Plain"&gt;py.test tests/test_storage.py&lt;/span&gt;
+&lt;span class="nt"&gt;env&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt;
+  &lt;span class="nt"&gt;matrix&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt;
+  &lt;span class="p p-Indicator"&gt;-&lt;/span&gt; &lt;span class="l l-Scalar l-Scalar-Plain"&gt;DJANGO_VERSION=1.7&lt;/span&gt;
+  &lt;span class="p p-Indicator"&gt;-&lt;/span&gt; &lt;span class="l l-Scalar l-Scalar-Plain"&gt;DJANGO_VERSION=1.6&lt;/span&gt;
+  &lt;span class="p p-Indicator"&gt;-&lt;/span&gt; &lt;span class="l l-Scalar l-Scalar-Plain"&gt;DJANGO_VERSION=1.5&lt;/span&gt;
+  &lt;span class="nt"&gt;global&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt;
+  &lt;span class="p p-Indicator"&gt;-&lt;/span&gt; &lt;span class="l l-Scalar l-Scalar-Plain"&gt;USING_TRAVIS=YES&lt;/span&gt;
+  &lt;span class="p p-Indicator"&gt;-&lt;/span&gt; &lt;span class="l l-Scalar l-Scalar-Plain"&gt;QINIU_BUCKET_NAME=django-qiniu-storage&lt;/span&gt;
+  &lt;span class="p p-Indicator"&gt;-&lt;/span&gt; &lt;span class="l l-Scalar l-Scalar-Plain"&gt;QINIU_BUCKET_DOMAIN=django-qiniu-storage.qiniudn.com&lt;/span&gt;
+  &lt;span class="p p-Indicator"&gt;-&lt;/span&gt; &lt;span class="nt"&gt;secure&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt; &lt;span class="l l-Scalar l-Scalar-Plain"&gt;QVYe9vITrCQw924X7h0vYfHwSDGs6QTaHitM2M31hVkYdBWnYMQZcyW1b5DUcXIOot/Z9+1av77tHgh2nXPA34uR7OIzO+LTtmByEE4fOQwJPDkWvJmF63z6B3eRwH20RPg7sBhzQqEK8KPApTiVjRxw5qsf8yp3+V5aozrKAOg=&lt;/span&gt;
+&lt;span class="nt"&gt;matrix&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt;
+  &lt;span class="nt"&gt;exclude&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt;
+  &lt;span class="p p-Indicator"&gt;-&lt;/span&gt; &lt;span class="nt"&gt;python&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt; &lt;span class="s"&gt;&amp;#39;2.6&amp;#39;&lt;/span&gt;
+    &lt;span class="nt"&gt;env&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt; &lt;span class="l l-Scalar l-Scalar-Plain"&gt;DJANGO_VERSION=1.7&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;</summary></entry><entry><title>devpi —— 架设私有 pypi 的最佳选择</title><link href="https://wing2south.com/post/devpi-best-private-pypi-server/" rel="alternate"></link><published>2014-05-03T22:31:00+08:00</published><updated>2014-05-03T22:31:00+08:00</updated><author><name>Leonardo Zhou</name></author><id>tag:wing2south.com,2014-05-03:post/devpi-best-private-pypi-server/</id><summary type="html">&lt;h2&gt;引言&lt;/h2&gt;
+&lt;p&gt;&lt;a href="https://pypi.python.org/pypi"&gt;PyPI&lt;/a&gt; 可以说是 Python 程序员几乎每天都要用到的工具 （当然由于众所周知的原因， 在国内使用&lt;a href="http://pypi.douban.com/simple/"&gt;豆瓣&lt;/a&gt;，&lt;a href="http://mirrors.aliyun.com/pypi/simple/"&gt;阿里云&lt;/a&gt; 等公司/组织提供的 PyPI 镜像会更加快捷，稳定）。但是在每个公司内部都会有一些的闭源的，私有的 Python Package 。 为了让这些私有的 Python Package 的安装流程能和 PyPI 一致， 架设一个私有的 PyPI 就很有必要了。&lt;/p&gt;
+&lt;h2&gt;寻寻觅觅&lt;/h2&gt;
+&lt;p&gt;目前，在各大搜索引擎上，无论是去搜索 “how to build a private pypi” 还是 “怎样搭建私有的pypi”，都能找到大量的解决方法和工具。 其中比较常见的 "类 PyPI Server" 就有： &lt;a href="https://github.com/benliles/djangopypi"&gt;DjangoPyPI&lt;/a&gt;， &lt;a href="https://github.com/ask/chishop"&gt;chishop&lt;/a&gt;， &lt;a href="https://github.com/schmir/pypiserver"&gt;pypiserver&lt;/a&gt;， &lt;a href="https://svn.python.org/packages/trunk/pypi/"&gt;Cheese Shop&lt;/a&gt;， &lt;a href="https://github.com/mvantellingen/localshop"&gt;localshop&lt;/a&gt;, &lt;a href="https://pypi.python.org/pypi/mypypi"&gt;mypypi&lt;/a&gt;, &lt;a href="https://bitbucket.org/r1chardj0n3s/proxypypi"&gt;proxypypi&lt;/a&gt;,  &lt;a href="https://github.com/tzulberti/Flask-PyPi-Proxy"&gt;Flask-PyPi-Proxy&lt;/a&gt; ... 就算不是你“选择困难症患者”, 面对如此众多的选择， 心里恐怕也要发毛了。&lt;/p&gt;
+&lt;p&gt;其实在搭建私有 pypi 这个问题上，Python 官方是有一个推荐工具的： &lt;a href="http://doc.devpi.net/"&gt;devpi&lt;/a&gt;。我在试用过上述工具后， 也觉得无论是在功能上，还是代码质量上 devpi 都遥遥领先于其他候选工具。可惜的是，由于devpi 是 一个在2013 年才起步的新项目， 目前 Python 中文圈里还没有人对 devpi 做过详细的介绍， 希望本文能起到个抛砖引玉的作用， 让更多 Pythonista 知道这个工具。&lt;/p&gt;
+&lt;h2&gt;为什么选择 devpi ?&lt;/h2&gt;
+&lt;p&gt;我以表格的形式对做了常见的 PyPI Server 做了一个对比，总结：&lt;/p&gt;
+&lt;table&gt;
+&lt;thead&gt;
+&lt;tr&gt;
+&lt;th&gt;PyPI Server&lt;/th&gt;
+&lt;th&gt;PyPI代理镜像&lt;/th&gt;
+&lt;th&gt;本地缓存&lt;/th&gt;
+&lt;th&gt;单元测试&lt;/th&gt;
+&lt;th&gt;系统测试&lt;/th&gt;
+&lt;th&gt;搜索&lt;/th&gt;
+&lt;th&gt;项目最后更新时间&lt;/th&gt;
+&lt;/tr&gt;
+&lt;/thead&gt;
+&lt;tbody&gt;
+&lt;tr&gt;
+&lt;td&gt;devpi&lt;/td&gt;
+&lt;td&gt;支持&lt;/td&gt;
+&lt;td&gt;支持&lt;/td&gt;
+&lt;td&gt;★★★★&lt;/td&gt;
+&lt;td&gt;★★★★★&lt;/td&gt;
+&lt;td&gt;支持 Web + XML RPC&lt;/td&gt;
+&lt;td&gt;2014-05-03(本文截稿时)&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;DjangoPyPI&lt;/td&gt;
+&lt;td&gt;支持&lt;/td&gt;
+&lt;td&gt;不支持&lt;/td&gt;
+&lt;td&gt;★&lt;/td&gt;
+&lt;td&gt;无&lt;/td&gt;
+&lt;td&gt;支持 Web + XML RPC&lt;/td&gt;
+&lt;td&gt;2012-04-19&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;chishop&lt;/td&gt;
+&lt;td&gt;不支持&lt;/td&gt;
+&lt;td&gt;不支持&lt;/td&gt;
+&lt;td&gt;无&lt;/td&gt;
+&lt;td&gt;无&lt;/td&gt;
+&lt;td&gt;不支持&lt;/td&gt;
+&lt;td&gt;2011-04-02&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;pypiserver&lt;/td&gt;
+&lt;td&gt;支持&lt;/td&gt;
+&lt;td&gt;不支持&lt;/td&gt;
+&lt;td&gt;★★★★★&lt;/td&gt;
+&lt;td&gt;无&lt;/td&gt;
+&lt;td&gt;不支持&lt;/td&gt;
+&lt;td&gt;2014-04-21&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;Cheese Shop&lt;/td&gt;
+&lt;td&gt;不支持&lt;/td&gt;
+&lt;td&gt;不支持&lt;/td&gt;
+&lt;td&gt;★★&lt;/td&gt;
+&lt;td&gt;无&lt;/td&gt;
+&lt;td&gt;支持Web + XML RPC&lt;/td&gt;
+&lt;td&gt;已终止开发&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;localshop&lt;/td&gt;
+&lt;td&gt;支持&lt;/td&gt;
+&lt;td&gt;支持&lt;/td&gt;
+&lt;td&gt;★★★★&lt;/td&gt;
+&lt;td&gt;无&lt;/td&gt;
+&lt;td&gt;只支持XML RPC&lt;/td&gt;
+&lt;td&gt;2014-03-12&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;mypypi&lt;/td&gt;
+&lt;td&gt;不支持&lt;/td&gt;
+&lt;td&gt;不支持&lt;/td&gt;
+&lt;td&gt;★★&lt;/td&gt;
+&lt;td&gt;无&lt;/td&gt;
+&lt;td&gt;不支持&lt;/td&gt;
+&lt;td&gt;2013-05-31&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;proxypypi&lt;/td&gt;
+&lt;td&gt;支持&lt;/td&gt;
+&lt;td&gt;支持&lt;/td&gt;
+&lt;td&gt;无&lt;/td&gt;
+&lt;td&gt;无&lt;/td&gt;
+&lt;td&gt;不支持&lt;/td&gt;
+&lt;td&gt;2013-12-06&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;Flask-Pypi-Proxy&lt;/td&gt;
+&lt;td&gt;支持&lt;/td&gt;
+&lt;td&gt;支持&lt;/td&gt;
+&lt;td&gt;无&lt;/td&gt;
+&lt;td&gt;无&lt;/td&gt;
+&lt;td&gt;不支持&lt;/td&gt;
+&lt;td&gt;2014-01-08&lt;/td&gt;
+&lt;/tr&gt;
+&lt;/tbody&gt;
+&lt;/table&gt;
+&lt;p&gt;对上表中各列的详细解释：&lt;/p&gt;
+&lt;h4&gt;PyPI 代理镜像&lt;/h4&gt;
+&lt;p&gt;一些比较“古老”的 PyPI Server 只实现了 官方PyPI 上已有功能，即允许用户上传, 下载，搜索 Python Packages。 
+换而言之， 对于每个 Python Package， 都要先上传到私有的 PyPI，然后才能下载 。可是在实际开发中， 要安装的各种公共的 Python Package 的数量往往要远远多余自己公司内部的 私有 Package 的数量， 一一手动上传显然并不是及。所以， 大部分“现代”的 PyPI Server 无法在本地找到一个 Python Package 时，会自动去 官方PYPI 查找一次， 并从 官方PYPI 下载对应版本的 Python Package。&lt;/p&gt;
+&lt;h4&gt;本地缓存&lt;/h4&gt;
+&lt;p&gt;这项功能是以 “PyPI 代理镜像” 为前提的。对于公开的的 Python Package，从 PyPI上下载回来后。如果能在本地做一个缓存，下次请求就不必再去访问外网了。这不仅提高了下载速度，也保证了 PyPI Down掉后不会影响你网站/软件的部署。此外在某些生产环境下可能要禁止访问外网，再者现在不少程序员带着笔记本去喜欢去星巴克，公园之类的场合码代码, 这些地方的网速往往不是很稳定，这项功能就更加实用了。&lt;/p&gt;
+&lt;h4&gt;单元测试&lt;/h4&gt;
+&lt;p&gt;单元测试的数量和覆盖率显然是衡量软件质量的指标。 devpi 的单元测试非常完善， 其测试用例多达 200 多个。 值得一提的是， Python 社区里两大著名测试工具 &lt;code&gt;pytest&lt;/code&gt; 和 &lt;code&gt;tox&lt;/code&gt; 也是出自 devpi 的作者 holger krekel 笔下。 因此， 对于 devpi 的代码质量， 我们大可打五星好评。&lt;/p&gt;
+&lt;h4&gt;系统测试&lt;/h4&gt;
+&lt;p&gt;除了完善的单元测试外， devpi 还有着一个看似疯狂的系统测试。 &lt;code&gt;devpi/server/extra/compare_pypi_devpi.py&lt;/code&gt; 这个脚本会去抓取 PyPI 上所有 3 万 多个 package 的链接， 并和 devpi 的本地缓存比较， 从而保证了所有 PyPI 上的 Python Package 都是能被 devpi 处理的。 据 devpi 的作者透露， 他用这个测试脚本发现了不少古怪的，需要特殊处理的 package。 可见这个看似变态的系统测试还是很有必要的。 由于其他 PyPI Server 都没有做过这类测试， 其可靠性不由让人怀疑。&lt;/p&gt;
+&lt;p&gt;搜索这块没有多少可讲的，略过不谈。&lt;/p&gt;
+&lt;h4&gt;项目的开发活跃度&lt;/h4&gt;
+&lt;p&gt;如果项目长期得不到更新，不仅用户渴望的新功能不会被实现， 那些困扰用户的 bug 也不会被修复。1-2年的不到得不到更新对一个开源项目往往是致命的。 devpi 的开发十分活跃，几乎每天都有提交。 考虑到，再过不久， &lt;a href="https://warehouse.python.org/"&gt;Warehouse&lt;/a&gt; 就要取代现有的基于 Cheese Shop 的 PYPI了。届时 新的 PyPI 会新增一些功能和API, 我们自然也希望 私有的 PyPI Server 能实现这些功能。 我在 twitter 上同时 fololow 了 pip 和 PYPI 的主要维护者 @dstufft 和 devpi 的作者 @hpk42， 常见到两人讨论如何在 devpi 上实现 warehouse 的新功能。&lt;/p&gt;
+&lt;hr /&gt;
+&lt;p&gt;不难看出， 对于每一指标， devpi 在同类竞争者中都是最优秀的。&lt;/p&gt;
+&lt;h3&gt;devpi 特有的功能&lt;/h3&gt;
+&lt;h4&gt;Index 继承&lt;/h4&gt;
+&lt;p&gt;这是前面提到的 “PyPI 代理镜像” 功能的加强版。像 pypiserver， proxypypi 等实现只支持两个Index： 私有的和共有的。 在私有 Index 上找不到用户请求的 Python Package时， 就会 fallback 去 Public PyPI。 devpi 对这一功能做了扩展， devpi可以支持多个 Index， 这些Index可以像面向对象编程里的类一样， 存在继承关系。 &lt;/p&gt;
+&lt;p&gt;举个实际一点的使用例子。在我司还有少量系统是运行在老旧的 FreeBSD 和 Pythohn 2.5 上。，不少 library 是无法直接工作的， 要打 patch。所以我司会维护两个 Index， 一个放公司内部开发的库(Internal Index)， 一个放专门为老系统适配修改的后的 Package(Legacy Patched Index), 继承关系如下：&lt;/p&gt;
+&lt;p&gt;&lt;code&gt;Public PyPI --&amp;gt; Internal Index --&amp;gt; Legacy Patched Index&lt;/code&gt; &lt;/p&gt;
+&lt;p&gt;这样老系统使用 Legacy Patched Index ，新系统使用 Internal Index， 互不干扰。那些同时兼容新老系统的 Package 就上传到 Internal Index， Legacy Patched Index 因为继承的原因， 也可以使用。&lt;/p&gt;
+&lt;h4&gt;集成 Jenkins&lt;/h4&gt;
+&lt;h4&gt;数据导入/导出&lt;/h4&gt;
+&lt;p&gt;用户上传到 devpi 的 package 是可以被统一导出和导入的。 这项功能除了用于数据备份外， 也被用于 devpi 升级时的数据迁移。&lt;/p&gt;
+&lt;h4&gt;replication&lt;/h4&gt;
+&lt;p&gt;devpi 原生支持 replication 和 failover， 保证高可用。&lt;/p&gt;</summary></entry><entry><title>Python Packaging 编年史</title><link href="https://wing2south.com/post/python-packaging-timeline/" rel="alternate"></link><published>2014-04-16T20:57:00+08:00</published><updated>2014-04-16T20:57:00+08:00</updated><author><name>Leonardo Zhou</name></author><id>tag:wing2south.com,2014-04-16:post/python-packaging-timeline/</id><summary type="html">&lt;div class="cd-container" id="cd-timeline" style="display:body"&gt;
+&lt;h2&gt;distutils-sig 工作组成立&lt;/h2&gt;
+&lt;p&gt;最初，Python 并没有自带的包管理器。 纯 Python 的模块（module）往往是通过直接拷贝源代码到相应目录来安装的。 如果要发布的模块包含 C extension ，那么还要写一个冗长的 &lt;code&gt;Makefile&lt;/code&gt;。 导致程序员之间想要共享模块很不方便。&lt;/p&gt;
+&lt;p&gt;在 1998年的 Pycon 上， 终于有人 hold 不住了， Greg Ward 作了一场名为 "Building Extensions Considered Painful" 的演讲，引起了很多与会者的共鸣。 于是会后他们建立了 distutils-sig 工作组和同名的邮件列表，专门用来讨论开发 Python 包管理系统的相关事宜。&lt;/p&gt;
+&lt;p&gt;&lt;em&gt;1998年&lt;/em&gt;&lt;/p&gt;
+&lt;h2&gt;disutils 被纳入 Python 标准库&lt;/h2&gt;
+&lt;p&gt;历时2年的开发后，distutils 终于修成正果，被添加到 Python 1.6 的标准库中。从此 Python 社区有了自己的 包管理库。&lt;/p&gt;
+&lt;p&gt;&lt;code&gt;Disutils&lt;/code&gt; 使用 &lt;code&gt;setup.py&lt;/code&gt; 作为 模块的配置文件， 并通过 &lt;code&gt;python setup.py CMD&lt;/code&gt; 的形式， 提供了一套用于编译 C extension, 打包 ... 的命令&lt;/p&gt;
+&lt;p&gt;尽管用今天的眼光来看，&lt;code&gt;Disutils&lt;/code&gt; 有很多不足 。但在当时 &lt;code&gt;Disutils&lt;/code&gt; 确实是一个十分出色的包管理系统。由于吸取了Perl 社区1在&lt;code&gt;Makefile.PL&lt;/code&gt; 上的教训，且为了更好地跨平台， &lt;code&gt;Disutils&lt;/code&gt; 没有基于当时盛行的 Makefile。&lt;code&gt;Disutils&lt;/code&gt; 充分运用了 Python 简明而又强大的特性， 没有为了 Packaging 去单独研发一套 DSL， &lt;code&gt;setup.py&lt;/code&gt; 就是一个 普通的 Python 文件。&lt;/p&gt;
+&lt;p&gt;&lt;em&gt;2000年&lt;/em&gt;&lt;/p&gt;
+&lt;h2&gt;catalog-sig 工作组成立&lt;/h2&gt;
+&lt;p&gt;当时 Perl 社区 的 CPAN 运营的非常成功。 眼红的 Pythonista 们也开始着手创建 Python 的公共第三方模块库&lt;/p&gt;
+&lt;p&gt;&lt;em&gt;2000年&lt;/em&gt;&lt;/p&gt;
+&lt;h2&gt;PEP 241 Metadata for Python Software Packages&lt;/h2&gt;
+&lt;p&gt;&lt;code&gt;A.M. Kuchling&lt;/code&gt; 起草了 PEP 241,用于规范 Python Package 的元信息&lt;/p&gt;
+&lt;p&gt;&lt;em&gt;2001年&lt;/em&gt;&lt;/p&gt;
+&lt;h2&gt;PEP 301 Package Index and Metadata for Distutils&lt;/h2&gt;
+&lt;p&gt;&lt;code&gt;PEP 301&lt;/code&gt; 是 &lt;code&gt;PEP 241&lt;/code&gt; 的补充。约定了元信息 该以怎样的格式被存储在 &lt;code&gt;setup.py&lt;/code&gt; 中， 来让 &lt;code&gt;disutils&lt;/code&gt; 和 &lt;code&gt;PyPI&lt;/code&gt; 识别。&lt;/p&gt;
+&lt;p&gt;&lt;em&gt;2002年&lt;/em&gt;&lt;/p&gt;
+&lt;h2&gt;PyPI 正式上线&lt;/h2&gt;
+&lt;p&gt;Python Package Index(PyPI) 最初也被叫做 Cheeseshop。时至今日， PyPI 已经收录近 5万个 第三方开源模块。
+&lt;code&gt;Disutils&lt;/code&gt; 也做了相应的升级，以支持元数据和上传 Python Package 到 PyPI。&lt;/p&gt;
+&lt;p&gt;&lt;em&gt;2003年&lt;/em&gt;&lt;/p&gt;
+&lt;h2&gt;setuptools 发布&lt;/h2&gt;
+&lt;p&gt;&lt;code&gt;setuptools&lt;/code&gt; 是由 Phillip Eby 开发的。&lt;/p&gt;
+&lt;p&gt;&lt;em&gt;2004年&lt;/em&gt;&lt;/p&gt;
+&lt;h2&gt;virtualenv 发布&lt;/h2&gt;
+&lt;p&gt;最初， 所有的 Python Package 都是安装在系统的全局 &lt;code&gt;site-packages&lt;/code&gt; 目录下。开发者要安装第三方库，常常要有 &lt;code&gt;root&lt;/code&gt; 权限。不同项目安装的第三方库也容易导致版本冲突。Ian Bicking 开发了 &lt;code&gt;virtualenv&lt;/code&gt; 用于创建独立的 Python 运行环境。virtualenv 和 pip 应该是每个 Python 程序员熟知的工具， 这里就不再赘述了。&lt;/p&gt;
+&lt;p&gt;&lt;em&gt;2007年&lt;/em&gt;&lt;/p&gt;
+&lt;h2&gt;pip 发布&lt;/h2&gt;
+&lt;p&gt;&lt;code&gt;pip&lt;/code&gt; 同样是由 Ian Bicking 开发。&lt;/p&gt;
+&lt;p&gt;&lt;em&gt;2008年&lt;/em&gt;&lt;/p&gt;
+&lt;h2&gt;distribute&lt;/h2&gt;
+&lt;p&gt;&lt;code&gt;setuptools&lt;/code&gt; 很快就成为 Python 社区中首选的包管理库。但是正当 &lt;code&gt;setuptools&lt;/code&gt; 如日中天的时候，它的开发却嘎然而止。 明明有一大堆 pull request 在等待 merge, 开发者却杳无音信。Python 3 的支持也迟迟不加。 最终 Tarek Ziade 从 &lt;code&gt;setuptools&lt;/code&gt; fork 出了 &lt;code&gt;distribute&lt;/code&gt;。&lt;/p&gt;
+&lt;p&gt;虽然 &lt;code&gt;distribute&lt;/code&gt; 在各方面都优于 &lt;code&gt;setuptools&lt;/code&gt;， 但 &lt;code&gt;setuptools&lt;/code&gt; 毕竟盛名在外，Python 社区 从  &lt;code&gt;setuptools&lt;/code&gt; 转移到 &lt;code&gt;distribute&lt;/code&gt; 上话了很长时间， 并造成了一定的社区分裂。&lt;/p&gt;
+&lt;p&gt;&lt;code&gt;2008年&lt;/code&gt;&lt;/p&gt;
+&lt;h2&gt;PyPA 成立&lt;/h2&gt;
+&lt;p&gt;&lt;code&gt;2011年 2月 28日&lt;/code&gt;&lt;/p&gt;
+&lt;h2&gt;Distutils2 的开发被终止&lt;/h2&gt;
+&lt;p&gt;曾被寄予厚望的 &lt;code&gt;disutils2&lt;/code&gt;，没能按原计划在随 Python 3.3. 发布。&lt;/p&gt;
+&lt;p&gt;&lt;code&gt;disutils2&lt;/code&gt; 项目失败的原因有很多。 &lt;code&gt;disutils2&lt;/code&gt; 的开发者人数只有 1-2 名，而且都是在用业余时间开发, 由于开发者没有足够的精力， 开发经常陷入停滞。项目也十分缺少 beta 用户，也很少得到用户的反馈。&lt;/p&gt;
+&lt;p&gt;&lt;code&gt;2011年 2月 28日&lt;/code&gt;&lt;/p&gt;
+&lt;h2&gt;Pycon 2013 - Directions for Packaging&lt;/h2&gt;
+&lt;p&gt;由于 &lt;code&gt;disutils2&lt;/code&gt; 项目被放弃，对开发者而言， 未来的 Python Packaing 会是怎么样是个未知数。&lt;/p&gt;
+&lt;p&gt;于是趁着 Python 程序员的年度盛会 Pycon 的召开，PyPA 设法让 &lt;code&gt;distributue&lt;/code&gt;,  &lt;code&gt;virtualenv&lt;/code&gt;, &lt;code&gt;pip&lt;/code&gt;, &lt;code&gt;wheel&lt;/code&gt;,  &lt;code&gt;PyPI&lt;/code&gt;,  &lt;code&gt;zc.buildout&lt;/code&gt; 等项目的开发者们齐聚一堂, 共同讨论和规划 Python Packaging 未来的开发路线。
+&lt;a href="https://www.youtube.com/watch?v=ePFWp3oSfyU"&gt;Youtube 视频&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;&lt;code&gt;2013年 3月 15日&lt;/code&gt;&lt;/p&gt;
+&lt;h2&gt;PyPI 有了 CDN 加速&lt;/h2&gt;
+&lt;p&gt;Fastly 公司很慷慨地为 PyPI 提供了免费的 CDN 加速。&lt;/p&gt;
+&lt;p&gt;天朝用户应该对此印象十分深刻， 这倒不是因为有了 CDN 之后访问速度变快了。2014年上半年有一段时间 PyPI无法正常访问就是拜某墙所赐。&lt;/p&gt;
+&lt;p&gt;&lt;code&gt;2013年 5月 26日&lt;/code&gt;&lt;/p&gt;
+&lt;h2&gt;Distribute 项目被 merge 回了 setuptools&lt;/h2&gt;
+&lt;p&gt;&lt;code&gt;2013年 6月 9日&lt;/code&gt;&lt;/p&gt;
+&lt;h2&gt;pip 成为 Python 3.4 自带的包管理库&lt;/h2&gt;
+&lt;p&gt;让我们看个冷笑话吧：&lt;/p&gt;
+&lt;p&gt;甲： Python 的包管理工具是什么？ &lt;/p&gt;
+&lt;p&gt;乙：&lt;code&gt;pip&lt;/code&gt;&lt;/p&gt;
+&lt;p&gt;甲：pip` 是 Python 自带的吗？&lt;/p&gt;
+&lt;p&gt;乙：不是。 甲：那么我应该怎么安装 pip ? &lt;/p&gt;
+&lt;p&gt;乙： &lt;code&gt;easy_install pip&lt;/code&gt;&lt;/p&gt;
+&lt;p&gt;甲：&lt;code&gt;easy_install&lt;/code&gt; 是什么？&lt;/p&gt;
+&lt;p&gt;乙：一个 Python 包管理工具&lt;/p&gt;
+&lt;p&gt;甲：...&lt;/p&gt;
+&lt;p&gt;&lt;code&gt;2013年 8月 10日&lt;/code&gt;&lt;/p&gt;
+&lt;/div&gt;
+&lt;style type="text/css"&gt;
+
+*, *:after, *:before {
+  -webkit-box-sizing: border-box;
+  -moz-box-sizing: border-box;
+  box-sizing: border-box;
+}
+
+.entry-content {
+  color: #7f8c97;
+  background-color: #e9f0f5;
+}
+
+.cd-container a {
+  color: #acb7c0;
+  text-decoration: none;
+  font-family: "Open Sans", sans-serif;
+}
+
+.cd-container img {
+  max-width: 100%;
+}
+
+.cd-container h1, .cd-container h2 {
+  font-family: "Open Sans", sans-serif;
+  font-weight: bold;
+  margin-top: 0 !important;
+}
+
+.cd-container {
+  /* this class is used to give a max-width to the element it is applied to, and center it horizontally when it reaches that max-width */
+  width: 90%;
+  max-width: 1170px;
+  margin: 0 auto;
+}
+.cd-container::after {
+  /* clearfix */
+  content: '';
+  display: table;
+  clear: both;
+}
+
+#cd-timeline {
+  position: relative;
+  padding: 2em 0;
+  margin-top: 2em;
+  margin-bottom: 2em;
+}
+#cd-timeline::before {
+  /* this is the vertical line */
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 18px;
+  height: 100%;
+  width: 4px;
+  background: #d7e4ed;
+}
+
+@media only screen and (min-width: 1170px) {
+  #cd-timeline {
+    margin-top: 3em;
+    margin-bottom: 3em;
+  }
+  #cd-timeline::before {
+    left: 50%;
+    margin-left: -2px;
+  }
+}
+
+.timeline-block {
+  position: relative;
+  margin: 2em 0;
+  *zoom: 1;
+}
+.timeline-block:before, .timeline-block:after {
+  content: " ";
+  display: table;
+}
+.timeline-block:after {
+  clear: both;
+}
+.timeline-block:first-child {
+  margin-top: 0;
+}
+.timeline-block:last-child {
+  margin-bottom: 0;
+}
+@media only screen and (min-width: 1170px) {
+  .timeline-block {
+    margin: 4em 0;
+  }
+  .timeline-block:first-child {
+    margin-top: 0;
+  }
+  .timeline-block:last-child {
+    margin-bottom: 0;
+  }
+}
+
+.cd-timeline-img {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  box-shadow: 0 0 0 4px #ffffff, inset 0 2px 0 rgba(0, 0, 0, 0.08), 0 3px 0 4px rgba(0, 0, 0, 0.05);
+}
+.cd-timeline-img .genericon {
+  color: white;
+  font-size: 36px;
+  margin-left: 14px;
+  margin-top: 14px;
+}
+.cd-timeline-img.cd-green {
+  background: #75ce66;
+}
+.cd-timeline-img.cd-red {
+  background: #c03b44;
+}
+.cd-timeline-img.cd-yellow {
+  background: #f0ca45;
+}
+@media only screen and (min-width: 1170px) {
+  .cd-timeline-img {
+    width: 60px;
+    height: 60px;
+    left: 50%;
+    margin-left: -30px;
+    /* Force Hardware Acceleration in WebKit */
+    -webkit-transform: translateZ(0);
+    -webkit-backface-visibility: hidden;
+  }
+  .cssanimations .cd-timeline-img.is-hidden {
+    visibility: hidden;
+  }
+  .cssanimations .cd-timeline-img.bounce-in {
+    visibility: visible;
+    -webkit-animation: cd-bounce-1 0.6s;
+    -moz-animation: cd-bounce-1 0.6s;
+    animation: cd-bounce-1 0.6s;
+  }
+}
+
+@-webkit-keyframes cd-bounce-1 {
+  0% {
+    opacity: 0;
+    -webkit-transform: scale(0.5);
+    -moz-transform: scale(0.5);
+    -ms-transform: scale(0.5);
+    -o-transform: scale(0.5);
+    transform: scale(0.5);
+  }
+  60% {
+    opacity: 1;
+    -webkit-transform: scale(1.2);
+    -moz-transform: scale(1.2);
+    -ms-transform: scale(1.2);
+    -o-transform: scale(1.2);
+    transform: scale(1.2);
+  }
+  100% {
+    -webkit-transform: scale(1);
+    -moz-transform: scale(1);
+    -ms-transform: scale(1);
+    -o-transform: scale(1);
+    transform: scale(1);
+  }
+}
+@-moz-keyframes cd-bounce-1 {
+  0% {
+    opacity: 0;
+    -webkit-transform: scale(0.5);
+    -moz-transform: scale(0.5);
+    -ms-transform: scale(0.5);
+    -o-transform: scale(0.5);
+    transform: scale(0.5);
+  }
+  60% {
+    opacity: 1;
+    -webkit-transform: scale(1.2);
+    -moz-transform: scale(1.2);
+    -ms-transform: scale(1.2);
+    -o-transform: scale(1.2);
+    transform: scale(1.2);
+  }
+  100% {
+    -webkit-transform: scale(1);
+    -moz-transform: scale(1);
+    -ms-transform: scale(1);
+    -o-transform: scale(1);
+    transform: scale(1);
+  }
+}
+@-o-keyframes cd-bounce-1 {
+  0% {
+    opacity: 0;
+    -webkit-transform: scale(0.5);
+    -moz-transform: scale(0.5);
+    -ms-transform: scale(0.5);
+    -o-transform: scale(0.5);
+    transform: scale(0.5);
+  }
+  60% {
+    opacity: 1;
+    -webkit-transform: scale(1.2);
+    -moz-transform: scale(1.2);
+    -ms-transform: scale(1.2);
+    -o-transform: scale(1.2);
+    transform: scale(1.2);
+  }
+  100% {
+    -webkit-transform: scale(1);
+    -moz-transform: scale(1);
+    -ms-transform: scale(1);
+    -o-transform: scale(1);
+    transform: scale(1);
+  }
+}
+@keyframes cd-bounce-1 {
+  0% {
+    opacity: 0;
+    -webkit-transform: scale(0.5);
+    -moz-transform: scale(0.5);
+    -ms-transform: scale(0.5);
+    -o-transform: scale(0.5);
+    transform: scale(0.5);
+  }
+  60% {
+    opacity: 1;
+    -webkit-transform: scale(1.2);
+    -moz-transform: scale(1.2);
+    -ms-transform: scale(1.2);
+    -o-transform: scale(1.2);
+    transform: scale(1.2);
+  }
+  100% {
+    -webkit-transform: scale(1);
+    -moz-transform: scale(1);
+    -ms-transform: scale(1);
+    -o-transform: scale(1);
+    transform: scale(1);
+  }
+}
+.timeline-content {
+  position: relative;
+  margin-left: 60px;
+  background: #ffffff;
+  border-radius: 0.25em;
+  padding: 1em;
+  box-shadow: 0 3px 0 #d7e4ed;
+  *zoom: 1;
+}
+.timeline-content:before, .timeline-content:after {
+  content: " ";
+  display: table;
+}
+.timeline-content:after {
+  clear: both;
+}
+.timeline-content h2 {
+  color: #303e49;
+}
+.timeline-content p, .timeline-content .cd-date {
+  font-size: 13px;
+  font-size: 0.8125rem;
+}
+.timeline-content .cd-date {
+  display: inline-block;
+}
+.timeline-content p {
+  margin: 1em 0;
+  line-height: 1.6;
+}
+.timeline-content .cd-date {
+  float: left;
+  padding: .8em 0;
+  opacity: .7;
+}
+.timeline-content::before {
+  content: '';
+  position: absolute;
+  top: 16px;
+  right: 100%;
+  height: 0;
+  width: 0;
+  border: 7px solid transparent;
+  border-right: 7px solid #ffffff;
+}
+@media only screen and (min-width: 768px) {
+  .timeline-content h2 {
+    font-size: 20px;
+    font-size: 1.25rem;
+  }
+  .timeline-content p {
+    font-size: 16px;
+    font-size: 1rem;
+  }
+ .timeline-content .cd-date {
+    font-size: 14px;
+    font-size: 0.875rem;
+  }
+}
+@media only screen and (min-width: 1170px) {
+  .timeline-content {
+    margin-left: 0;
+    padding: 1.6em;
+    width: 45%;
+  }
+  .timeline-content::before {
+    top: 24px;
+    left: 100%;
+    border-color: transparent;
+    border-left-color: #ffffff;
+  }
+  .timeline-content .cd-date {
+    position: absolute;
+    width: 100%;
+    left: 132%;
+    top: 6px;
+    font-size: 16px;
+    font-size: 1rem;
+  }
+  .timeline-block:nth-child(even) .timeline-content {
+    float: right;
+  }
+  .timeline-block:nth-child(even) .timeline-content::before {
+    top: 24px;
+    left: auto;
+    right: 100%;
+    border-color: transparent;
+    border-right-color: #ffffff;
+  }
+
+  .timeline-block:nth-child(even) .timeline-content .cd-date {
+    left: auto;
+    right: 132%;
+    text-align: right;
+  }
+  .cssanimations .timeline-content.is-hidden {
+    visibility: hidden;
+  }
+  .cssanimations .timeline-content.bounce-in {
+    visibility: visible;
+    -webkit-animation: cd-bounce-2 0.6s;
+    -moz-animation: cd-bounce-2 0.6s;
+    animation: cd-bounce-2 0.6s;
+  }
+}
+
+@media only screen and (min-width: 1170px) {
+  /* inverse bounce effect on even content blocks */
+  .cssanimations .timeline-block:nth-child(even) .timeline-content.bounce-in {
+    -webkit-animation: cd-bounce-2-inverse 0.6s;
+    -moz-animation: cd-bounce-2-inverse 0.6s;
+    animation: cd-bounce-2-inverse 0.6s;
+  }
+}
+@-webkit-keyframes cd-bounce-2 {
+  0% {
+    opacity: 0;
+    -webkit-transform: translateX(-100px);
+    -moz-transform: translateX(-100px);
+    -ms-transform: translateX(-100px);
+    -o-transform: translateX(-100px);
+    transform: translateX(-100px);
+  }
+  60% {
+    opacity: 1;
+    -webkit-transform: translateX(20px);
+    -moz-transform: translateX(20px);
+    -ms-transform: translateX(20px);
+    -o-transform: translateX(20px);
+    transform: translateX(20px);
+  }
+  100% {
+    -webkit-transform: translateX(0);
+    -moz-transform: translateX(0);
+    -ms-transform: translateX(0);
+    -o-transform: translateX(0);
+    transform: translateX(0);
+  }
+}
+@-moz-keyframes cd-bounce-2 {
+  0% {
+    opacity: 0;
+    -webkit-transform: translateX(-100px);
+    -moz-transform: translateX(-100px);
+    -ms-transform: translateX(-100px);
+    -o-transform: translateX(-100px);
+    transform: translateX(-100px);
+  }
+  60% {
+    opacity: 1;
+    -webkit-transform: translateX(20px);
+    -moz-transform: translateX(20px);
+    -ms-transform: translateX(20px);
+    -o-transform: translateX(20px);
+    transform: translateX(20px);
+  }
+  100% {
+    -webkit-transform: translateX(0);
+    -moz-transform: translateX(0);
+    -ms-transform: translateX(0);
+    -o-transform: translateX(0);
+    transform: translateX(0);
+  }
+}
+@-o-keyframes cd-bounce-2 {
+  0% {
+    opacity: 0;
+    -webkit-transform: translateX(-100px);
+    -moz-transform: translateX(-100px);
+    -ms-transform: translateX(-100px);
+    -o-transform: translateX(-100px);
+    transform: translateX(-100px);
+  }
+  60% {
+    opacity: 1;
+    -webkit-transform: translateX(20px);
+    -moz-transform: translateX(20px);
+    -ms-transform: translateX(20px);
+    -o-transform: translateX(20px);
+    transform: translateX(20px);
+  }
+  100% {
+    -webkit-transform: translateX(0);
+    -moz-transform: translateX(0);
+    -ms-transform: translateX(0);
+    -o-transform: translateX(0);
+    transform: translateX(0);
+  }
+}
+@keyframes cd-bounce-2 {
+  0% {
+    opacity: 0;
+    -webkit-transform: translateX(-100px);
+    -moz-transform: translateX(-100px);
+    -ms-transform: translateX(-100px);
+    -o-transform: translateX(-100px);
+    transform: translateX(-100px);
+  }
+  60% {
+    opacity: 1;
+    -webkit-transform: translateX(20px);
+    -moz-transform: translateX(20px);
+    -ms-transform: translateX(20px);
+    -o-transform: translateX(20px);
+    transform: translateX(20px);
+  }
+  100% {
+    -webkit-transform: translateX(0);
+    -moz-transform: translateX(0);
+    -ms-transform: translateX(0);
+    -o-transform: translateX(0);
+    transform: translateX(0);
+  }
+}
+@-webkit-keyframes cd-bounce-2-inverse {
+  0% {
+    opacity: 0;
+    -webkit-transform: translateX(100px);
+    -moz-transform: translateX(100px);
+    -ms-transform: translateX(100px);
+    -o-transform: translateX(100px);
+    transform: translateX(100px);
+  }
+  60% {
+    opacity: 1;
+    -webkit-transform: translateX(-20px);
+    -moz-transform: translateX(-20px);
+    -ms-transform: translateX(-20px);
+    -o-transform: translateX(-20px);
+    transform: translateX(-20px);
+  }
+  100% {
+    -webkit-transform: translateX(0);
+    -moz-transform: translateX(0);
+    -ms-transform: translateX(0);
+    -o-transform: translateX(0);
+    transform: translateX(0);
+  }
+}
+@-moz-keyframes cd-bounce-2-inverse {
+  0% {
+    opacity: 0;
+    -webkit-transform: translateX(100px);
+    -moz-transform: translateX(100px);
+    -ms-transform: translateX(100px);
+    -o-transform: translateX(100px);
+    transform: translateX(100px);
+  }
+  60% {
+    opacity: 1;
+    -webkit-transform: translateX(-20px);
+    -moz-transform: translateX(-20px);
+    -ms-transform: translateX(-20px);
+    -o-transform: translateX(-20px);
+    transform: translateX(-20px);
+  }
+  100% {
+    -webkit-transform: translateX(0);
+    -moz-transform: translateX(0);
+    -ms-transform: translateX(0);
+    -o-transform: translateX(0);
+    transform: translateX(0);
+  }
+}
+@-o-keyframes cd-bounce-2-inverse {
+  0% {
+    opacity: 0;
+    -webkit-transform: translateX(100px);
+    -moz-transform: translateX(100px);
+    -ms-transform: translateX(100px);
+    -o-transform: translateX(100px);
+    transform: translateX(100px);
+  }
+  60% {
+    opacity: 1;
+    -webkit-transform: translateX(-20px);
+    -moz-transform: translateX(-20px);
+    -ms-transform: translateX(-20px);
+    -o-transform: translateX(-20px);
+    transform: translateX(-20px);
+  }
+  100% {
+    -webkit-transform: translateX(0);
+    -moz-transform: translateX(0);
+    -ms-transform: translateX(0);
+    -o-transform: translateX(0);
+    transform: translateX(0);
+  }
+}
+@keyframes cd-bounce-2-inverse {
+  0% {
+    opacity: 0;
+    -webkit-transform: translateX(100px);
+    -moz-transform: translateX(100px);
+    -ms-transform: translateX(100px);
+    -o-transform: translateX(100px);
+    transform: translateX(100px);
+  }
+  60% {
+    opacity: 1;
+    -webkit-transform: translateX(-20px);
+    -moz-transform: translateX(-20px);
+    -ms-transform: translateX(-20px);
+    -o-transform: translateX(-20px);
+    transform: translateX(-20px);
+  }
+  100% {
+    -webkit-transform: translateX(0);
+    -moz-transform: translateX(0);
+    -ms-transform: translateX(0);
+    -o-transform: translateX(0);
+    transform: translateX(0);
+  }
+}
+&lt;/style&gt;
+
+&lt;script type="text/javascript" src="//upcdn.b0.upaiyun.com/libs/jquery/jquery-2.0.3.min.js"&gt;&lt;/script&gt;
+
+&lt;script type="text/javascript"&gt;
+$(function () {
+    $('#cd-timeline &gt; h2').each(function(){
+      var $this = $(this);
+      // use .add() and .nextUntil() to get both the .section-header
+      // and .section-item elements into a single set for our .wrapAll() call
+      $this.add($this.nextUntil('#cd-timeline &gt; h2', '#cd-timeline &gt; p'))
+        .wrapAll('&lt;div class="timeline-content"/&gt;');
+    });
+
+    $('#cd-timeline &gt; .timeline-content').wrap('&lt;div class="timeline-block"/&gt;');
+
+    $('#cd-timeline .timeline-content').each(function(){
+        var $this = $(this);
+        date_text = $this.children('p:last').text();
+        $this.children('p:last').remove();
+        $this.append('&lt;span class="cd-date"/&gt;')
+        $this.children('.cd-date').text(date_text);
+    });
+
+    $('#cd-timeline .timeline-block').each(function(){
+        var $this = $(this);
+        $this.prepend('&lt;div class="cd-timeline-img"&gt;&lt;/div&gt;');
+        colors = ['cd-green', 'cd-red', 'cd-yellow'];
+        rand_color = colors[Math.floor(Math.random()*colors.length)];
+        $this.children('.cd-timeline-img').addClass(rand_color);
+        $this.children('.cd-timeline-img').append('&lt;span class="genericon"/&gt;')
+        icons = ['genericon-pinned', 'genericon-week', 'genericon-day','genericon-month', 'genericon-time', 'genericon-user'];
+        rand_icon = icons[Math.floor(Math.random()*icons.length)];
+        $this.find('.genericon').addClass(rand_icon);
+
+    });
+});
+
+&lt;/script&gt;</summary><category term="packaging"></category></entry><entry><title>在 vagrant shared folder 下运行 python setup.py sdist 会报错的解决方法</title><link href="https://wing2south.com/post/virtual-box-shared-folder-run-setuppy-stdist/" rel="alternate"></link><published>2014-03-18T14:05:00+08:00</published><updated>2014-03-18T14:05:00+08:00</updated><author><name>Leonardo Zhou</name></author><id>tag:wing2south.com,2014-03-18:post/virtual-box-shared-folder-run-setuppy-stdist/</id><summary type="html">&lt;p&gt;我 PC 上的开发环境是 Windows + Vagrant ( VirtualBox )。常用的编辑器则是 sublime, pycharm 之类的图形化工具。为了方便在 windows 上编辑 vm 中的文件，代码都是放在 virtual box 的 shared folder 下的。&lt;/p&gt;
+&lt;p&gt;前不久，在我打包  &lt;a href="https://github.com/glasslion/django-qiniu-storage"&gt;django-qiniu-storage&lt;/a&gt; 并发布到 pypi 时， 遇到了点麻烦。&lt;/p&gt;
+&lt;p&gt;当我运行 &lt;code&gt;python setup.py sdist&lt;/code&gt; 时，出现了如下错误：&lt;/p&gt;
+&lt;div class="highlight snippet"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="o"&gt;&amp;gt;&amp;gt;&amp;gt;&lt;/span&gt; &lt;span class="n"&gt;python&lt;/span&gt; &lt;span class="n"&gt;setup&lt;/span&gt;&lt;span class="p"&gt;.&lt;/span&gt;&lt;span class="n"&gt;py&lt;/span&gt; &lt;span class="n"&gt;sdist&lt;/span&gt;
+
+&lt;span class="n"&gt;running&lt;/span&gt; &lt;span class="n"&gt;sdist&lt;/span&gt;
+&lt;span class="n"&gt;running&lt;/span&gt; &lt;span class="n"&gt;egg_info&lt;/span&gt;
+&lt;span class="p"&gt;...&lt;/span&gt;
+&lt;span class="n"&gt;hard&lt;/span&gt; &lt;span class="n"&gt;linking&lt;/span&gt; &lt;span class="n"&gt;xxx&lt;/span&gt; &lt;span class="o"&gt;-&amp;gt;&lt;/span&gt; &lt;span class="n"&gt;xxx&lt;/span&gt;
+&lt;span class="n"&gt;error&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt; &lt;span class="k"&gt;Operation&lt;/span&gt; &lt;span class="k"&gt;not&lt;/span&gt; &lt;span class="n"&gt;permitted&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;还好错误信息还算是比较明了的: 因为脚本是在 Ubuntu 虚拟机下运行， Python 假设操作系统支持 hardlink, 于是 setup.py 会尝试在工作目录下建立 hardlink,  但是virtualbox 目前还不支持在 shared folder下建立 hard link, 从而引发了  Operation not permitted。&lt;/p&gt;
+&lt;p&gt;用 Google 和 stackoverflow 搜索之后，发现这个 bug 已经分别被人反馈给 &lt;a href="http://bugs.python.org/issue8876"&gt;Python&lt;/a&gt; 和 &lt;a href="https://www.virtualbox.org/ticket/818"&gt;virtualbox&lt;/a&gt; 的开发者了，但是在 Python 和 virtualbox 任何一方都不太可能在短时间内被修复。&lt;/p&gt;
+&lt;p&gt;幸运的是，在 python 的 bug 讨论列表里， 有人给出了一个可行的解决方案:&lt;/p&gt;
+&lt;blockquote&gt;
+&lt;p&gt;A dirty hack is to include this line at the top of your setup.py: del os.link&lt;/p&gt;
+&lt;/blockquote&gt;
+&lt;p&gt;因为 &lt;code&gt;disutils&lt;/code&gt; 是通过检查 os.link 是否为 None 来决定是否使用 hardlink, 那么将 os.link monkey patch 为 None 就行了 。这么做除了多占用些微不足道的磁盘空间，不会有任何副作用。&lt;/p&gt;
+&lt;p&gt;我做了个小改动，通过检查环境变量， 只有当 &lt;code&gt;setup.py&lt;/code&gt; 在 vagrant 下运行时， 才会 &lt;code&gt;del os.link&lt;/code&gt;.&lt;/p&gt;
+&lt;div class="highlight snippet"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="c1"&gt;# put the following code at the beginning of your setup.py&lt;/span&gt;
+&lt;span class="c1"&gt;# if you are not using vagrant, just delete os.link directly,&lt;/span&gt;
+&lt;span class="c1"&gt;# The hard link only saves a little disk space, so you should not care&lt;/span&gt;
+&lt;span class="k"&gt;if&lt;/span&gt; &lt;span class="n"&gt;os&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;environ&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;get&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="s1"&gt;&amp;#39;USER&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;&lt;span class="s1"&gt;&amp;#39;&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt; &lt;span class="o"&gt;==&lt;/span&gt; &lt;span class="s1"&gt;&amp;#39;vagrant&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt;
+    &lt;span class="k"&gt;del&lt;/span&gt; &lt;span class="n"&gt;os&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;link&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;</summary><category term="vagrant"></category></entry><entry><title>让django-debug-toolbar支持Python2.5</title><link href="https://wing2south.com/post/58990039224/django-debug-toolbar-python2-5/" rel="alternate"></link><published>2013-08-22T14:27:00+08:00</published><updated>2013-08-22T14:27:00+08:00</updated><author><name>Leonardo Zhou</name></author><id>tag:wing2south.com,2013-08-22:post/58990039224/django-debug-toolbar-python2-5/</id><summary type="html">&lt;p&gt;&lt;code&gt;django-debug-toolbar&lt;/code&gt; 从 0.9.x 开始就放弃对 Python 2.5 的支持了。最简单的做法是将那些 仍深陷在 Python 2.5 泥沼里的 Django 项目的 &lt;code&gt;django-debug-toolbar&lt;/code&gt; 版本指定为 0.8.x。遗憾的是，作为最受欢迎的 Django 第三方 package, &lt;code&gt;django-debug-toolbar&lt;/code&gt; 本身也有不少很有用的第三方 plugin ，而这些 plugin 为了使用 &lt;code&gt;django-debug-toolbar&lt;/code&gt; 的 new features 往往就不再支持 0.8.x 版的 &lt;code&gt;django-debug-toolbar&lt;/code&gt; 了。比如 &lt;a href="https://github.com/orf/django-debug-toolbar-template-timings"&gt;django-debug-toolbar-template-timings&lt;/a&gt; 这个用来 profile Django templates 渲染时间的插件。&lt;/p&gt;
+&lt;p&gt;这种情况下，只能手动去给 &lt;code&gt;django-debug-toolbar&lt;/code&gt; 的源码打 patch了。好在截至目前的 0.9.4 版本，让 &lt;code&gt;django-debug-toolbar&lt;/code&gt; 支持 Python 2.5, 所要做的改动很小。&lt;/p&gt;
+&lt;p&gt;在8个月前，曾有人提交了的一个支持 Python 2.5 的 &lt;a href="https://github.com/django-debug-toolbar/django-debug-toolbar/commit/3013b5a6e4c682004207e944ebea172a39e52e8c"&gt;patch&lt;/a&gt; 到 master 上，但之后由于 Django 1.5 明确放弃 support Python 2.5, 现在的 master 已经再次不支持（而且这次是永久不再支持） Python 2.5了。但对上面的 patch 稍作修改，就能让 pypi 上 &lt;code&gt;django-debug-toolbar&lt;/code&gt; 最新的正式版本0.9.4， 在 Python 2.5 下工作.&lt;/p&gt;
+&lt;p&gt;patch( &lt;a href="https://gist.github.com/glasslion/6303816"&gt;pygments生成的diff highlight html效果不是很好，可以去看 gist&lt;/a&gt;):&lt;/p&gt;
+&lt;div class="highlight snippet"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="gh"&gt;diff --git a/debug_toolbar/panels/sql.py b/debug_toolbar/panels/sql.py&lt;/span&gt;
+&lt;span class="gh"&gt;index 18fffdc..a0bfce8 100644&lt;/span&gt;
+&lt;span class="gd"&gt;--- a/debug_toolbar/panels/sql.py&lt;/span&gt;
+&lt;span class="gi"&gt;+++ b/debug_toolbar/panels/sql.py&lt;/span&gt;
+&lt;span class="gu"&gt;@@ -193,8 +193,14 @@ class SQLDebugPanel(DebugPanel):&lt;/span&gt;
+                 stacktrace = []
+                 for frame in query[&amp;#39;stacktrace&amp;#39;]:
+                     params = map(escape, frame[0].rsplit(&amp;#39;/&amp;#39;, 1) + list(frame[1:]))
+&lt;span class="gi"&gt;+                    params_dict = dict((unicode(idx), v) for idx, v in enumerate(params))&lt;/span&gt;
+                     try:
+&lt;span class="gd"&gt;-                        stacktrace.append(u&amp;#39;&amp;lt;span class=&amp;quot;path&amp;quot;&amp;gt;{0}/&amp;lt;/span&amp;gt;&amp;lt;span class=&amp;quot;file&amp;quot;&amp;gt;{1}&amp;lt;/span&amp;gt; in &amp;lt;span class=&amp;quot;func&amp;quot;&amp;gt;{3}&amp;lt;/span&amp;gt;(&amp;lt;span class=&amp;quot;lineno&amp;quot;&amp;gt;{2}&amp;lt;/span&amp;gt;)\n  &amp;lt;span class=&amp;quot;code&amp;quot;&amp;gt;{4}&amp;lt;/span&amp;gt;&amp;#39;.format(*params))&lt;/span&gt;
+&lt;span class="gi"&gt;+                        stacktrace.append(u&amp;#39;&amp;lt;span class=&amp;quot;path&amp;quot;&amp;gt;%(0)s/&amp;lt;/span&amp;gt;&amp;#39;&lt;/span&gt;
+&lt;span class="gi"&gt;+                              u&amp;#39;&amp;lt;span class=&amp;quot;file&amp;quot;&amp;gt;%(1)s&amp;lt;/span&amp;gt;&amp;#39;&lt;/span&gt;
+&lt;span class="gi"&gt;+                              u&amp;#39; in &amp;lt;span class=&amp;quot;func&amp;quot;&amp;gt;%(3)s&amp;lt;/span&amp;gt;&amp;#39;&lt;/span&gt;
+&lt;span class="gi"&gt;+                              u&amp;#39;(&amp;lt;span class=&amp;quot;lineno&amp;quot;&amp;gt;%(2)s&amp;lt;/span&amp;gt;)\n&amp;#39;&lt;/span&gt;
+&lt;span class="gi"&gt;+                              u&amp;#39;  &amp;lt;span class=&amp;quot;code&amp;quot;&amp;gt;%(4)s&amp;lt;/span&amp;gt;&amp;#39;&lt;/span&gt;
+&lt;span class="gi"&gt;+                              % params_dict)&lt;/span&gt;
+                     except IndexError:
+                         # This frame doesn&amp;#39;t have the expected format, so skip it and move on to the next one
+                         continue
+&lt;/pre&gt;&lt;/div&gt;</summary><category term="django"></category></entry><entry><title>Django 无法在QuerySet中select_related()一个GenericForeignKey的解决方法</title><link href="https://wing2south.com/post/58406919860/django/" rel="alternate"></link><published>2013-08-16T16:20:00+08:00</published><updated>2013-08-16T16:20:00+08:00</updated><author><name>Leonardo Zhou</name></author><id>tag:wing2south.com,2013-08-16:post/58406919860/django/</id><summary type="html">&lt;p&gt;在Django开发中， 用 &lt;code&gt;select_related()&lt;/code&gt; 把 item 的 &lt;code&gt;ForeignKey&lt;/code&gt; 在同一条SQL中通过 join table 一起取出是很常见的做法。但 &lt;code&gt;select_related&lt;/code&gt; 是不支持 &lt;code&gt;GenericForeignKey&lt;/code&gt; （主要用于 ContentType）的。&lt;/p&gt;
+&lt;p&gt;自Django 1.4开始， Django 提供了 &lt;code&gt;prefetch_related&lt;/code&gt; 这个方法来解决这个问题。 除了 &lt;code&gt;GenericForeignKey&lt;/code&gt;. ，&lt;code&gt;prefetch_related&lt;/code&gt; 还可以作用在 &lt;code&gt;ManyToManyField&lt;/code&gt; 和 'many-to-one' 的 ForeignKey 这些 &lt;code&gt;select_related()&lt;/code&gt; 不支持的 field. &lt;code&gt;prefetch_related&lt;/code&gt; 的原理是对related field 做一次独立的 query, 将 related field 缓存在内存中，今后去取 queryset 中各个 item 的 related field 时，就直接从缓存中找，而不是每次都做一次 db query. 对 &lt;code&gt;prefetch_related&lt;/code&gt; 更详细的解释可以参考&lt;a href="docs.djangoproject.com/en/dev/ref/models/querysets/#prefetch-related"&gt;官方文档&lt;/a&gt;。&lt;/p&gt;
+&lt;p&gt;对 Django 版本低于1.4的项目， 可以参考这篇博客 &lt;a href="http://blog.roseman.org.uk/2010/02/22/django-patterns-part-4-forwards-generic-relations/"&gt;Django patterns, part 4: forwards generic relations&lt;/a&gt; 给出的解决方法. 其思路和 prefetch_related 几乎是一样的，都是缓存 related field 。把 N+M 条SQL （N 是 queryset中item的数量，M是的 related_field 的 Model 的 item
+数量） 简化 成2 条 SQL。&lt;/p&gt;
+&lt;p&gt;下面是我基于Daniel Roseman 的博客，在Justin Israel的 &lt;a href="https://gist.github.com/justinfx/3095246#file-cache_generics-py"&gt;gist&lt;/a&gt;基础上改良的脚本，虽然只支持 content_type 的 &lt;code&gt;GenericForeignKey&lt;/code&gt; ，但经过简单的修改， 可以很容易支持其他类型的field.&lt;/p&gt;
+&lt;div class="highlight snippet"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="sd"&gt;&amp;#39;&amp;#39;&amp;#39;&lt;/span&gt;
+&lt;span class="sd"&gt;Cache the generic relation field of all the objects &lt;/span&gt;
+&lt;span class="sd"&gt;in the queryset, using larger bulk queries ahead of time.&lt;/span&gt;
+
+&lt;span class="sd"&gt;Improved from original by Daniel Roseman:&lt;/span&gt;
+&lt;span class="sd"&gt;http://blog.roseman.org.uk/2010/02/22/django-patterns-part-4-forwards-generic-relations/&lt;/span&gt;
+
+&lt;span class="sd"&gt;and&lt;/span&gt;
+
+&lt;span class="sd"&gt;justinfx&amp;#39;s gist cache_generics.py :&lt;/span&gt;
+&lt;span class="sd"&gt;https://gist.github.com/justinfx/3095246#file-cache_generics-py&lt;/span&gt;
+
+&lt;span class="sd"&gt;Supports customized object_id_field and GenericForeignKey name.&lt;/span&gt;
+
+&lt;span class="sd"&gt;&amp;#39;&amp;#39;&amp;#39;&lt;/span&gt;
+
+&lt;span class="kn"&gt;from&lt;/span&gt; &lt;span class="nn"&gt;operator&lt;/span&gt; &lt;span class="kn"&gt;import&lt;/span&gt; &lt;span class="n"&gt;attrgetter&lt;/span&gt;
+&lt;span class="kn"&gt;from&lt;/span&gt; &lt;span class="nn"&gt;django.contrib.contenttypes.models&lt;/span&gt; &lt;span class="kn"&gt;import&lt;/span&gt; &lt;span class="n"&gt;ContentType&lt;/span&gt;
+
+&lt;span class="k"&gt;def&lt;/span&gt; &lt;span class="nf"&gt;cache_generic_content_types&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;queryset&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;object_id_field&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="s1"&gt;&amp;#39;object_id&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;content_type_fk&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="s1"&gt;&amp;#39;content_object&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;):&lt;/span&gt;
+    &lt;span class="sd"&gt;&amp;quot;&amp;quot;&amp;quot;&lt;/span&gt;
+&lt;span class="sd"&gt;    Django does not support select_related on generic foreign key. Thus some&lt;/span&gt;
+&lt;span class="sd"&gt;    ORM actions may trigger N+M querys(N is item number of the queryset and&lt;/span&gt;
+&lt;span class="sd"&gt;    M is the item number of the content type). This function will cache content&lt;/span&gt;
+&lt;span class="sd"&gt;    and reduce N+M querys to 2 querys.&lt;/span&gt;
+
+&lt;span class="sd"&gt;    object_id_field: see https://docs.djangoproject.com/en/1.3/ref/contrib/contenttypes/#django.contrib.contenttypes.generic.GenericRelation&lt;/span&gt;
+&lt;span class="sd"&gt;    content_type_fk: the name of GenericForeignKey which linked to content type&lt;/span&gt;
+&lt;span class="sd"&gt;    &amp;quot;&amp;quot;&amp;quot;&lt;/span&gt;
+    &lt;span class="n"&gt;get_object_id&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;attrgetter&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;object_id_field&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+    &lt;span class="n"&gt;generics&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="p"&gt;{}&lt;/span&gt;
+    &lt;span class="k"&gt;for&lt;/span&gt; &lt;span class="n"&gt;item&lt;/span&gt; &lt;span class="ow"&gt;in&lt;/span&gt; &lt;span class="n"&gt;queryset&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt;
+        &lt;span class="k"&gt;if&lt;/span&gt; &lt;span class="n"&gt;get_object_id&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;item&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt; &lt;span class="ow"&gt;is&lt;/span&gt; &lt;span class="ow"&gt;not&lt;/span&gt; &lt;span class="bp"&gt;None&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt;
+            &lt;span class="n"&gt;generics&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;setdefault&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;item&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;content_type_id&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="nb"&gt;set&lt;/span&gt;&lt;span class="p"&gt;())&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;add&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;get_object_id&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;item&lt;/span&gt;&lt;span class="p"&gt;))&lt;/span&gt;
+
+    &lt;span class="n"&gt;content_types&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;ContentType&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;objects&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;in_bulk&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;generics&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;keys&lt;/span&gt;&lt;span class="p"&gt;())&lt;/span&gt;
+
+    &lt;span class="n"&gt;relations&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="p"&gt;{}&lt;/span&gt;
+    &lt;span class="k"&gt;for&lt;/span&gt; &lt;span class="n"&gt;ct&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;fk_list&lt;/span&gt; &lt;span class="ow"&gt;in&lt;/span&gt; &lt;span class="n"&gt;generics&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;iteritems&lt;/span&gt;&lt;span class="p"&gt;():&lt;/span&gt;
+        &lt;span class="n"&gt;ct_model&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;content_types&lt;/span&gt;&lt;span class="p"&gt;[&lt;/span&gt;&lt;span class="n"&gt;ct&lt;/span&gt;&lt;span class="p"&gt;]&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;model_class&lt;/span&gt;&lt;span class="p"&gt;()&lt;/span&gt;
+        &lt;span class="n"&gt;relations&lt;/span&gt;&lt;span class="p"&gt;[&lt;/span&gt;&lt;span class="n"&gt;ct&lt;/span&gt;&lt;span class="p"&gt;]&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;ct_model&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;objects&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;in_bulk&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="nb"&gt;list&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;fk_list&lt;/span&gt;&lt;span class="p"&gt;))&lt;/span&gt;
+
+    &lt;span class="k"&gt;for&lt;/span&gt; &lt;span class="n"&gt;item&lt;/span&gt; &lt;span class="ow"&gt;in&lt;/span&gt; &lt;span class="n"&gt;queryset&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt;
+        &lt;span class="k"&gt;try&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt;
+            &lt;span class="n"&gt;cached_val&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;relations&lt;/span&gt;&lt;span class="p"&gt;[&lt;/span&gt;&lt;span class="n"&gt;item&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;content_type_id&lt;/span&gt;&lt;span class="p"&gt;][&lt;/span&gt;&lt;span class="n"&gt;get_object_id&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;item&lt;/span&gt;&lt;span class="p"&gt;)]&lt;/span&gt;
+        &lt;span class="k"&gt;except&lt;/span&gt; &lt;span class="ne"&gt;KeyError&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt;
+            &lt;span class="n"&gt;cached_val&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="bp"&gt;None&lt;/span&gt;
+        &lt;span class="nb"&gt;setattr&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;item&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="s1"&gt;&amp;#39;_&lt;/span&gt;&lt;span class="si"&gt;%s&lt;/span&gt;&lt;span class="s1"&gt;_cache&amp;#39;&lt;/span&gt; &lt;span class="o"&gt;%&lt;/span&gt; &lt;span class="n"&gt;content_type_fk&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;cached_val&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+    &lt;span class="k"&gt;return&lt;/span&gt; &lt;span class="n"&gt;queryset&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;view &lt;a href="https://gist.github.com/glasslion/6247958#file-generic_relations-py"&gt;gist: generic_relations.py&lt;/a&gt;&lt;/p&gt;</summary><category term="django"></category></entry><entry><title>无节操的nude.py识别哔～～～～图评测[NSFW]</title><link href="https://wing2south.com/post/58062234806/nude-py-nsfw/" rel="alternate"></link><published>2013-08-12T23:15:46+08:00</published><updated>2013-08-12T23:15:46+08:00</updated><author><name>Leonardo Zhou</name></author><id>tag:wing2south.com,2013-08-12:post/58062234806/nude-py-nsfw/</id><summary type="html">&lt;p&gt;发个无节操的东东： &lt;a href="https://github.com/hhatto/nude.py"&gt;nude.py&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;故名思意，nude.py就是一个Python实现的，判断一张图片是否是nude的library.&lt;/p&gt;
+&lt;p&gt;安装很简单：&lt;/p&gt;
+&lt;div class="highlight snippet"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="n"&gt;pip&lt;/span&gt; &lt;span class="n"&gt;install&lt;/span&gt; &lt;span class="n"&gt;nudepy&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;nude.py的图片识别/处理是依赖于&lt;code&gt;PIL&lt;/code&gt;或&lt;code&gt;Pillow&lt;/code&gt;的，由于&lt;code&gt;Pillow&lt;/code&gt;的安装过程比&lt;code&gt;PIL&lt;/code&gt;简单很多，强烈推荐用&lt;code&gt;Pillow&lt;/code&gt;。&lt;/p&gt;
+&lt;div class="highlight snippet"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="o"&gt;#&lt;/span&gt; &lt;span class="err"&gt;让&lt;/span&gt;&lt;span class="n"&gt;Pillow&lt;/span&gt;&lt;span class="err"&gt;支持&lt;/span&gt;&lt;span class="n"&gt;jpeg&lt;/span&gt;
+&lt;span class="o"&gt;#&lt;/span&gt; &lt;span class="err"&gt;若未安装&lt;/span&gt;&lt;span class="n"&gt;libjpeg&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;&lt;span class="err"&gt;用&lt;/span&gt;&lt;span class="n"&gt;Pillow&lt;/span&gt;&lt;span class="err"&gt;处理&lt;/span&gt;&lt;span class="n"&gt;JPEG&lt;/span&gt; &lt;span class="err"&gt;图片，会报&lt;/span&gt; &lt;span class="n"&gt;IOError&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt; &lt;span class="n"&gt;decoder&lt;/span&gt; &lt;span class="n"&gt;jpeg&lt;/span&gt; &lt;span class="k"&gt;not&lt;/span&gt; &lt;span class="n"&gt;available&lt;/span&gt;
+&lt;span class="o"&gt;#&lt;/span&gt; &lt;span class="err"&gt;此时要先&lt;/span&gt;&lt;span class="n"&gt;pip&lt;/span&gt; &lt;span class="n"&gt;uninstall&lt;/span&gt; &lt;span class="n"&gt;Pillow&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="err"&gt;安装好&lt;/span&gt; &lt;span class="n"&gt;libjpeg&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;&lt;span class="err"&gt;再重新&lt;/span&gt; &lt;span class="n"&gt;pip&lt;/span&gt; &lt;span class="n"&gt;instal&lt;/span&gt;  &lt;span class="n"&gt;Pillow&lt;/span&gt;
+&lt;span class="n"&gt;sudo&lt;/span&gt; &lt;span class="n"&gt;apt&lt;/span&gt;&lt;span class="o"&gt;-&lt;/span&gt;&lt;span class="k"&gt;get&lt;/span&gt; &lt;span class="n"&gt;install&lt;/span&gt; &lt;span class="n"&gt;libjpeg8&lt;/span&gt;&lt;span class="o"&gt;-&lt;/span&gt;&lt;span class="n"&gt;dev&lt;/span&gt; &lt;span class="n"&gt;pip&lt;/span&gt; &lt;span class="n"&gt;install&lt;/span&gt; &lt;span class="n"&gt;Pillow&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;nude的API很简单：&lt;/p&gt;
+&lt;div class="highlight snippet"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="kn"&gt;import&lt;/span&gt; &lt;span class="nn"&gt;nude&lt;/span&gt;
+&lt;span class="kn"&gt;from&lt;/span&gt; &lt;span class="nn"&gt;nude&lt;/span&gt; &lt;span class="kn"&gt;import&lt;/span&gt; &lt;span class="n"&gt;Nude&lt;/span&gt;
+
+&lt;span class="k"&gt;print&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;nude&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;is_nude&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="s1"&gt;&amp;#39;./nude.rb/spec/images/damita.jpg&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;))&lt;/span&gt;
+
+&lt;span class="n"&gt;n&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;Nude&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="s1"&gt;&amp;#39;./nude.rb/spec/images/damita.jpg&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+&lt;span class="n"&gt;n&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;parse&lt;/span&gt;&lt;span class="p"&gt;()&lt;/span&gt;
+&lt;span class="k"&gt;print&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="s2"&gt;&amp;quot;damita :&amp;quot;&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;n&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;result&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;n&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;inspect&lt;/span&gt;&lt;span class="p"&gt;())&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;实测结果：&lt;/p&gt;
+&lt;p&gt;先来几张吾王的:&lt;/p&gt;
+&lt;p&gt;&lt;img alt="nudepy1" src="http://ww4.sinaimg.cn/large/6c3391c1gw1eefnud176lj20dw0ijn01.jpg" /&gt;&lt;/p&gt;
+&lt;p&gt;&lt;img alt="nudepy2" src="http://ww2.sinaimg.cn/large/6c3391c1gw1eefnvfxncuj206904owel.jpg" /&gt;&lt;/p&gt;
+&lt;p&gt;&lt;img alt="nudepy3" src="http://ww3.sinaimg.cn/large/6c3391c1gw1eefnwh3jgjj207705e0so.jpg" /&gt;&lt;/p&gt;
+&lt;p&gt;&lt;img alt="nudepy4" src="http://ww3.sinaimg.cn/large/6c3391c1gw1eefo1rx5vyj20dm0i7wf4.jpg" /&gt;&lt;/p&gt;
+&lt;p&gt;&lt;img alt="nudepy5" src="http://ww3.sinaimg.cn/large/6c3391c1gw1eefo23dy0cj206b06oa9y.jpg" /&gt;&lt;/p&gt;
+&lt;p&gt;这几张~~玉照~~御照被nude.py毫无异议得判为nude，就连下面这张不怎么犯规的的，也没能幸免&lt;/p&gt;
+&lt;p&gt;&lt;img alt="nudepy6" src="http://ww3.sinaimg.cn/large/6c3391c1gw1eefo2ie38wj20c10go0w1.jpg" /&gt;&lt;/p&gt;
+&lt;p&gt;不过下面这种尺度的，就不会被错杀了。&lt;/p&gt;
+&lt;p&gt;&lt;img alt="nudepy7" src="http://ww2.sinaimg.cn/large/6c3391c1gw1eefo2vp9cfj20ao0e8t9c.jpg" /&gt;&lt;/p&gt;
+&lt;p&gt;这让我想起了当年让小朋友们闻风丧胆的绿坝娘。坝娘横行马勒戈壁，最后竟是栽在了这几只喵星人头上。&lt;/p&gt;
+&lt;p&gt;&lt;img alt="nudepy8" src="http://ww4.sinaimg.cn/large/6c3391c1gw1eefo39ta6kj209f0dcjs2.jpg" /&gt;&lt;/p&gt;
+&lt;p&gt;&lt;img alt="nudepy9" src="http://ww1.sinaimg.cn/large/6c3391c1gw1eefo5l9x5dj20dw0d8t9n.jpg" /&gt;&lt;/p&gt;
+&lt;p&gt;&lt;img alt="nudepy10" src="http://ww4.sinaimg.cn/large/6c3391c1gw1eefo5yg3n3j20dw0afacx.jpg" /&gt;&lt;/p&gt;
+&lt;p&gt;&lt;img alt="nudepy11" src="http://ww1.sinaimg.cn/large/6c3391c1gw1eefo67osgtj20dw0af755.jpg" /&gt;&lt;/p&gt;
+&lt;p&gt;&lt;img alt="nudepy12" src="http://ww2.sinaimg.cn/large/6c3391c1gw1eefo6exmwsj20dw0itgmn.jpg" /&gt;&lt;/p&gt;
+&lt;p&gt;Nude.py表现相当不错，这几只肥猫都没能蒙混过去。&lt;/p&gt;
+&lt;p&gt;来个2.5次元的，这只吾王的手办，也被判为Nude。&lt;/p&gt;
+&lt;p&gt;&lt;img alt="nudepy13" src="http://ww3.sinaimg.cn/large/6c3391c1gw1eefo6txssqj20cg0jg402.jpg" /&gt;&lt;/p&gt;
+&lt;p&gt;最后二次元的情况不容乐观，不知道是不是现在男孩子太可爱的缘故，这几张都没能识别出来&lt;/p&gt;
+&lt;p&gt;&lt;img alt="nudepy14" src="http://ww1.sinaimg.cn/large/6c3391c1gw1eefo77220gj20dw07tmxz.jpg" /&gt;&lt;/p&gt;
+&lt;p&gt;&lt;img alt="nudepy15" src="http://ww2.sinaimg.cn/large/6c3391c1gw1eefo7dr55kj20dw07taa4.jpg" /&gt;&lt;/p&gt;
+&lt;p&gt;&lt;img alt="nudepy16" src="http://ww1.sinaimg.cn/large/6c3391c1gw1eefo7o3feej20dw07tdge.jpg" /&gt;&lt;/p&gt;
+&lt;p&gt;就下面这两张识别出了：&lt;/p&gt;
+&lt;p&gt;&lt;img alt="nudepy17" src="http://ww2.sinaimg.cn/large/6c3391c1gw1eefo7vl7xqj207906yq3u.jpg" /&gt;&lt;/p&gt;
+&lt;p&gt;&lt;img alt="nudepy18" src="http://ww2.sinaimg.cn/large/6c3391c1gw1eefo83gaqaj20dw07tq3h.jpg" /&gt;&lt;/p&gt;
+&lt;p&gt;金闪闪惹不起，也识别出了：&lt;/p&gt;
+&lt;p&gt;&lt;img alt="nudepy19" src="http://ww1.sinaimg.cn/large/6c3391c1gw1eefo8le2x0j20dw07tjs0.jpg" /&gt;&lt;/p&gt;
+&lt;p&gt;在节操掉尽前，再多说一句，二次元的图片，如果用的是XXX的话，识别率蹭得就上去了。对看了本文心动手痒的诸位绅士来说，这是好事吧。&lt;/p&gt;</summary><category term="image-processing"></category></entry><entry><title>A simple demo for tornado web socket</title><link href="https://wing2south.com/post/57321962100/tornado-web-socket/" rel="alternate"></link><published>2013-08-04T17:29:00+08:00</published><updated>2013-08-04T17:29:00+08:00</updated><author><name>Leonardo Zhou</name></author><id>tag:wing2south.com,2013-08-04:post/57321962100/tornado-web-socket/</id><summary type="html">&lt;p&gt;&lt;strong&gt;Python Code&lt;/strong&gt;&lt;/p&gt;
+&lt;p&gt;&lt;img alt="images/tornado_websocket_python.png" src="http://ww2.sinaimg.cn/large/6c3391c1gw1eecw1ldxobj20dw0dw3yx.jpg" /&gt;&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;JS Code&lt;/strong&gt;&lt;/p&gt;
+&lt;p&gt;&lt;img alt="images/tornado_websocket_js.png" src="http://ww2.sinaimg.cn/large/6c3391c1gw1eecw1x8oxlj20dw0dwmyk.jpg" /&gt;&lt;/p&gt;
+&lt;p&gt;Subclass &lt;code&gt;WebSocketHandler&lt;/code&gt; to create a basic WebSocket handler.&lt;/p&gt;
+&lt;p&gt;Override &lt;code&gt;on_message&lt;/code&gt; to handle incoming messages, and use
+&lt;code&gt;write_message&lt;/code&gt; to send messages to the client. You can also override
+&lt;code&gt;open&lt;/code&gt; and &lt;code&gt;on_close&lt;/code&gt; to handle opened and closed connections.&lt;/p&gt;
+&lt;p&gt;The only communication methods available to you are &lt;code&gt;write_message()&lt;/code&gt;,
+&lt;code&gt;ping()&lt;/code&gt;, and &lt;code&gt;close()&lt;/code&gt;. Likewise, your request handler class should
+implement &lt;code&gt;open()&lt;/code&gt; method rather than &lt;code&gt;get(&lt;/code&gt;) or &lt;code&gt;post()&lt;/code&gt;.&lt;/p&gt;
+&lt;p&gt;参考: &lt;a href="http://www.tornadoweb.org/en/stable/websocket.html"&gt;tornado.websocket — Bidirectional communication to the browser&lt;/a&gt;&lt;/p&gt;</summary><category term="tornado"></category></entry><entry><title>Crate.io 一个更快，更美，更好的 pypi</title><link href="https://wing2south.com/post/57251711095/crate-io-pypi/" rel="alternate"></link><published>2013-08-03T23:50:07+08:00</published><updated>2013-08-03T23:50:07+08:00</updated><author><name>Leonardo Zhou</name></author><id>tag:wing2south.com,2013-08-03:post/57251711095/crate-io-pypi/</id><summary type="html">&lt;p&gt;Python 程序员几乎每天都会用到 pypi，但 Pypi 的 web 界面实在称不上好看，好用。于是有一帮 Python 程序员坐不住了， 捣鼓出了 crate.io。&lt;/p&gt;
+&lt;p&gt;&lt;img alt="crate_io_sh1" src="http://ww3.sinaimg.cn/large/6c3391c1gw1eee901ulcvj20dw07ht8r.jpg" /&gt;&lt;/p&gt;
+&lt;p&gt;Crate.io 托管在上heroku上，访问速度比pypi快。&lt;/p&gt;
+&lt;p&gt;对比pypi和Crate.io对关键字"secure"的搜索结果，很明显 Crate.io 搜索结果更精准，排名也更合理。搜索结果左侧还提供了很多有用的filter。&lt;/p&gt;
+&lt;p&gt;&lt;img alt="crate_io_sh2" src="http://ww2.sinaimg.cn/large/6c3391c1gw1eee90brba2j20dw07k3zf.jpg" /&gt;&lt;/p&gt;
+&lt;p&gt;&lt;img alt="crate_io_sh3" src="http://ww3.sinaimg.cn/large/6c3391c1gw1eee946s4yjj20dw0iy75b.jpg" /&gt;&lt;/p&gt;
+&lt;p&gt;通过Package页面里的All Version 和  History，可以很方便得找到package历史版本。&lt;/p&gt;
+&lt;p&gt;&lt;img alt="crate_io_sh4" src="http://ww4.sinaimg.cn/large/6c3391c1gw1eee957d9prj20dw07kjrq.jpg" /&gt;&lt;/p&gt;
+&lt;p&gt;顺便吐槽下python.org的改版，一年都快都过去了，还没改好啊。&lt;/p&gt;
+&lt;p&gt;&lt;img alt="crate_io_sh5" src="http://ww3.sinaimg.cn/large/6c3391c1gw1eee94puzfmj20dw07k74o.jpg" /&gt;&lt;/p&gt;
+&lt;hr /&gt;
+&lt;p&gt;&lt;strong&gt;Updates:&lt;/strong&gt;&lt;/p&gt;
+&lt;p&gt;目前 crate.io 已经无法访问了， Pypi 的团队已经决定，将在 crate.io 的基础上打造一个全新的 pypi 。 目前还在开发中，预计在2014年上线。&lt;/p&gt;
+&lt;p&gt;新版 pypi 的 github 项目地址: &lt;a href="[https://github.com/pypa/warehouse]"&gt;warehouse&lt;/a&gt;&lt;/p&gt;</summary><category term="packaging"></category></entry><entry><title>Python的双层循环可以这么玩</title><link href="https://wing2south.com/post/55431622560/python/" rel="alternate"></link><published>2013-07-15T00:33:00+08:00</published><updated>2013-07-15T00:33:00+08:00</updated><author><name>Leonardo Zhou</name></author><id>tag:wing2south.com,2013-07-15:post/55431622560/python/</id><summary type="html">&lt;p&gt;&lt;img alt="images/python_vs_ java_loop.png" src="http://ww4.sinaimg.cn/large/6c3391c1gw1eecwl0oosej20dw0dw3z7.jpg" /&gt;&lt;/p&gt;
+&lt;p&gt;把对循环的控制，过滤拆分到一个generator中，在主循环中只存放对循环对象操作的逻辑，不仅是代码更加清晰，也避免了从内层循环退出的麻烦事&lt;/p&gt;
+&lt;p&gt;参考 &lt;a href="http://nedbatchelder.com/text/iter/iter.html"&gt;Loop like a native: while, for, iterators, generators (PyCon US
+2013 Talk)&lt;/a&gt;&lt;/p&gt;</summary></entry><entry><title>"2" &lt; 1 == True</title><link href="https://wing2south.com/post/53490665799/2-1-true/" rel="alternate"></link><published>2013-06-21T11:45:16+08:00</published><updated>2013-06-21T11:45:16+08:00</updated><author><name>Leonardo Zhou</name></author><id>tag:wing2south.com,2013-06-21:post/53490665799/2-1-true/</id><summary type="html">&lt;p&gt;&lt;img alt="python_compare" src="http://ww4.sinaimg.cn/large/6c3391c1gw1eef2607ezbj20dw0dwq3j.jpg" /&gt;&lt;/p&gt;
+&lt;h2&gt;Python 语言中， 不同类型对象之间的比较规则浅析&lt;/h2&gt;
+&lt;p&gt;今天为了捉一个臭虫耗废了近一个小时，最后发现是 &lt;code&gt;if foo &amp;gt; 1:&lt;/code&gt;这里的foo实际是字符串，导致&lt;code&gt;foo&lt;/code&gt;是&lt;code&gt;"0"&lt;/code&gt;时，&lt;code&gt;"0" &amp;gt; 1&lt;/code&gt;为真。于是便花了点时间研究了下&lt;code&gt;Python&lt;/code&gt;比较运算规则。&lt;/p&gt;
+&lt;p&gt;在&lt;code&gt;Python2&lt;/code&gt;中，比较运算遵循以下规则:&lt;/p&gt;
+&lt;ol&gt;
+&lt;li&gt;数字和数字按大小排序 （数字类型包括 int, float, long, complex,
+    &lt;strong&gt;bool&lt;/strong&gt;）&lt;/li&gt;
+&lt;li&gt;字符串按字符串按字典序排序(str, unicode)&lt;/li&gt;
+&lt;li&gt;数字类型和非数字类型比较，除None外,数字类型总是小于非数字类型。&lt;/li&gt;
+&lt;li&gt;两个非数字不同类型，按其类型名的字典与排序&lt;/li&gt;
+&lt;li&gt;第4点有一个特例，老式类的实例总是小于新式类&lt;/li&gt;
+&lt;li&gt;非数字/字符串类型的同一类型的不同实例的比较，如果类定义了&lt;code&gt;__cmp__()&lt;/code&gt;方法，则用该方法比较&lt;/li&gt;
+&lt;li&gt;同上，若类型没定义&lt;code&gt;__cmp__()&lt;/code&gt;方法， 则按实例在内存中的地址排序&lt;/li&gt;
+&lt;li&gt;None &amp;lt; None&lt;/li&gt;
+&lt;li&gt;3，4，5，7 是CPython的实现，不是Python语言自身的标准，参见[CPython
+    implementation detail][]。
+    Python语言只要求对非数字和字符串类型的不同对象的比较，总是不想等的，比较结果可以是任意的，但必须是一致的（即多次比较，结果恒定）。&lt;/li&gt;
+&lt;/ol&gt;
+&lt;p&gt;&lt;code&gt;Python3&lt;/code&gt;终于修了这个bug ( &lt;a href="http://docs.python.org/3.0/whatsnew/3.0.html?highlight=incomparable#ordering-comparisons"&gt;What’s New In Python 3.0&lt;/a&gt; ), 规则如下：&lt;/p&gt;
+&lt;ol&gt;
+&lt;li&gt;incomparable类型对象比较 \&amp;lt;, \&amp;lt;=, &gt;=, &gt; 会 raise &lt;code&gt;TypeError&lt;/code&gt;&lt;/li&gt;
+&lt;li&gt;incomparable类型对象比较 ！=, == 仍是合法的，但总为&lt;code&gt;False&lt;/code&gt;&lt;/li&gt;
+&lt;li&gt;&lt;code&gt;cmp()&lt;/code&gt;和&lt;code&gt;__cmp__()&lt;/code&gt;方法被弃置了，取而代之的是&lt;code&gt;__lt__()&lt;/code&gt;，&lt;code&gt;__eq__()&lt;/code&gt;，&lt;code&gt;__hash__()&lt;/code&gt;
+    ...&lt;/li&gt;
+&lt;/ol&gt;
+&lt;p&gt;&lt;code&gt;Python2&lt;/code&gt; 当初会设计这种比较规则，可能是为了便于对包含不同类型对象的容器排序。&lt;code&gt;list.sort()&lt;/code&gt;和&lt;code&gt;sorted()&lt;/code&gt;都仿照了C/C++里的&lt;code&gt;sort&lt;/code&gt;。&lt;code&gt;Python2.4&lt;/code&gt;后&lt;code&gt;sort&lt;/code&gt;使用&lt;code&gt;key&lt;/code&gt;来比较不同对象显然更Pythonic&lt;/p&gt;
+&lt;p&gt;更多例子，参见&lt;a href="http://wiki.python.org/moin/HowTo/Sorting/"&gt;Sorting Mini-HOW TO&lt;/a&gt;&lt;/p&gt;</summary><category term="fail"></category></entry><entry><title>The ignored decorater</title><link href="https://wing2south.com/post/52930265558/ignored-ignored-context/" rel="alternate"></link><published>2013-06-14T14:16:00+08:00</published><updated>2013-06-14T14:16:00+08:00</updated><author><name>Leonardo Zhou</name></author><id>tag:wing2south.com,2013-06-14:post/52930265558/ignored-ignored-context/</id><summary type="html">&lt;p&gt;&lt;img alt="images/ignore_decorator.png" src="http://ww3.sinaimg.cn/large/6c3391c1gw1eee6peof5tj20e80e83z5.jpg" /&gt;&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;@ignored&lt;/strong&gt;&lt;/p&gt;
+&lt;p&gt;再介绍一个关于Python的冷知识， 可以用 &lt;em&gt;@ignored&lt;/em&gt; context manager来显式地声明要忽略的无关紧要的异常&lt;/p&gt;
+&lt;p&gt;虽然 try except后再pass掉的做法更常见，
+但其含义比较隐晦。阅读者往往要把代码块读到最后才能知道那些错误是要忽略的。然后再回过来检查这些异常是否该被忽略。&lt;/p&gt;
+&lt;p&gt;可惜Python3.4+才支持&lt;/p&gt;
+&lt;hr /&gt;
+&lt;p&gt;&lt;strong&gt;Upates&lt;/strong&gt;:&lt;/p&gt;
+&lt;p&gt;最新的Python3.4 dev 又把这个 decorator 被改名为 @suppress&lt;/p&gt;</summary></entry></feed>

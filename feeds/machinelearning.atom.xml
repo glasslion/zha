@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom"><title>翼图南</title><link href="https://wing2south.com/" rel="alternate"></link><link href="https://wing2south.com/feeds/machinelearning.atom.xml" rel="self"></link><id>https://wing2south.com/</id><updated>2018-02-16T00:00:00+08:00</updated><entry><title>显卡不够云来凑 - 如何选择用于深度学习的云主机</title><link href="https://wing2south.com/post/machine-learning-on-cloud/" rel="alternate"></link><published>2018-02-16T00:00:00+08:00</published><updated>2018-02-16T00:00:00+08:00</updated><author><name>Leonardo Zhou</name></author><id>tag:wing2south.com,2018-02-16:post/machine-learning-on-cloud/</id><summary type="html">&lt;p&gt;自从前两年 AlphaGO 先后战胜李世石和柯杰， 。&lt;/p&gt;
+&lt;p&gt;在本文的开头，我觉得有必要强调一点: 目前个人用户使用带显卡的云主机在做深度学习，从性价比上来说，通常没有自己买显卡合算。&lt;/p&gt;
+&lt;p&gt;相信很多读者会有疑问， 既然如此， 那本文的目的何在？ 这不是在坑大家吗。 答案是。 首先不是所有品牌的显卡能用来跑深度学习。 其次，显卡的配置不能太低。不建议用6G 显存。 笔记本用户， 要换显卡的话， 难度要比PC大很多。 PC 用户的话， 一些。有这么多因素制约，很多同学一上来学习热情很高涨， 结果在搭建环境上，就打了退堂鼓。&lt;/p&gt;
+&lt;p&gt;尽管云主机在性价比上没有多少优势，他有人立即上手机器学习。 有些人的机器可能显卡配置不高，有些人的笔记本可能升级显卡比较困难，有些人机器的显卡可能在高负载下散热很差，不要让这些事阻碍你去尝试深度学习。&lt;/p&gt;</summary></entry></feed>

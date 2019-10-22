@@ -1,0 +1,1855 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom"><title>翼图南</title><link href="https://wing2south.com/" rel="alternate"></link><link href="https://wing2south.com/feeds/all.atom.xml" rel="self"></link><id>https://wing2south.com/</id><updated>2019-05-18T00:00:00+08:00</updated><entry><title>fastai 源码浅析 - LayerGroups</title><link href="https://wing2south.com/post/fastai-source-code-layer-group/" rel="alternate"></link><published>2019-05-18T00:00:00+08:00</published><updated>2019-05-18T00:00:00+08:00</updated><author><name>Leonardo Zhou</name></author><id>tag:wing2south.com,2019-05-18:post/fastai-source-code-layer-group/</id><summary type="html">&lt;p&gt;fastai 在使用预训练模型进行迁移学习(Transfer Learning)时， 有一项很酷的特性: 你可以给模型的 不同 layer 设置不同的 learning rate (Discriminative Learning Rates).&lt;/p&gt;
+&lt;p&gt;然而一些模型 如 ResNet 有很多层， 要给每一层都设置一个不同的 lr, 既麻烦也没有必要。其解决方法在 &lt;strong&gt;&lt;a href="https://course.fast.ai/"&gt;Practical Deep Learning for Coders, v3&lt;/a&gt;&lt;/strong&gt; 课上， Jeremy 已经简略地提到过了。 fastai 会把 model 划分成若干个 layer groups, 给每个 group 设置一个不同的 learning rate。&lt;/p&gt;
+&lt;p&gt;其具体实现是怎样的?  不同结构的模型又是怎么划分 layer groupn 的? 对于新模型我们又应该怎样去设置 layer groups？ 要解答这些问题， 就需要我们自己来阅读源码了。&lt;/p&gt;
+&lt;p&gt;在通过 &lt;code&gt;cnn_learner()&lt;/code&gt; 等方式创建 learner 时， 会调用 &lt;code&gt;learn.split()&lt;/code&gt; 来对 model layers 分组:&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;fastai/vision/learner.py&lt;/strong&gt;&lt;/p&gt;
+&lt;div class="highlight snippet"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="k"&gt;def&lt;/span&gt; &lt;span class="nf"&gt;cnn_learner&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;data&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt;&lt;span class="n"&gt;DataBunch&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;base_arch&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt;&lt;span class="n"&gt;Callable&lt;/span&gt;&lt;span class="o"&gt;...&lt;/span&gt;&lt;span class="p"&gt;):&lt;/span&gt;
+    &lt;span class="o"&gt;...&lt;/span&gt;
+    &lt;span class="n"&gt;model&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;create_cnn_model&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="o"&gt;...&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+    &lt;span class="n"&gt;learn&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;Learner&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;data&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;model&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="o"&gt;**&lt;/span&gt;&lt;span class="n"&gt;kwargs&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+    &lt;span class="n"&gt;learn&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;split&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;split_on&lt;/span&gt; &lt;span class="ow"&gt;or&lt;/span&gt; &lt;span class="n"&gt;meta&lt;/span&gt;&lt;span class="p"&gt;[&lt;/span&gt;&lt;span class="s1"&gt;&amp;#39;split&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;])&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;&lt;strong&gt;&lt;code&gt;learn.split()&lt;/code&gt; 会把分组结果存放在 learner 的 &lt;code&gt;layer_groups&lt;/code&gt; 属性里:&lt;/strong&gt;&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;fastai/basic_train.py&lt;/strong&gt;&lt;/p&gt;
+&lt;div class="highlight snippet"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="k"&gt;def&lt;/span&gt; &lt;span class="nf"&gt;split&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="bp"&gt;self&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;split_on&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt;&lt;span class="n"&gt;SplitFuncOrIdxList&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;&lt;span class="o"&gt;-&amp;gt;&lt;/span&gt;&lt;span class="bp"&gt;None&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt;
+    &lt;span class="s2"&gt;&amp;quot;Split the model at `split_on`.&amp;quot;&lt;/span&gt;
+    &lt;span class="k"&gt;if&lt;/span&gt; &lt;span class="nb"&gt;isinstance&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;split_on&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;&lt;span class="n"&gt;Callable&lt;/span&gt;&lt;span class="p"&gt;):&lt;/span&gt;
+        &lt;span class="n"&gt;split_on&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;split_on&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="bp"&gt;self&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;model&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+    &lt;span class="bp"&gt;self&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;layer_groups&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;split_model&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="bp"&gt;self&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;model&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;split_on&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+    &lt;span class="k"&gt;return&lt;/span&gt; &lt;span class="bp"&gt;self&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;&lt;strong&gt;一个 model 的 layer 分组方案， 其实是由 &lt;code&gt;split_on&lt;/code&gt; 参数决定的。&lt;/strong&gt;这个 &lt;code&gt;split_on&lt;/code&gt; 参数可以在调用 &lt;code&gt;cnn_learner&lt;/code&gt; 创建 learner 时手动传入， 缺省使用 模型 &lt;code&gt;meta&lt;/code&gt; 配置里的 的 &lt;code&gt;split&lt;/code&gt;参数。&lt;/p&gt;
+&lt;p&gt;fastai.vision 指定了以下几种 split_on 函数:
+&lt;strong&gt;fastai/vision/learner.py&lt;/strong&gt;&lt;/p&gt;
+&lt;div class="highlight snippet"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="c1"&gt;# By default split models between first and second layer&lt;/span&gt;
+&lt;span class="k"&gt;def&lt;/span&gt; &lt;span class="nf"&gt;_default_split&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;m&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt; &lt;span class="n"&gt;nn&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;Module&lt;/span&gt;&lt;span class="p"&gt;):&lt;/span&gt;
+    &lt;span class="k"&gt;return&lt;/span&gt; &lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;m&lt;/span&gt;&lt;span class="p"&gt;[&lt;/span&gt;&lt;span class="mi"&gt;1&lt;/span&gt;&lt;span class="p"&gt;],)&lt;/span&gt;
+
+&lt;span class="c1"&gt;# Split a resnet style model&lt;/span&gt;
+&lt;span class="k"&gt;def&lt;/span&gt; &lt;span class="nf"&gt;_resnet_split&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;m&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt; &lt;span class="n"&gt;nn&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;Module&lt;/span&gt;&lt;span class="p"&gt;):&lt;/span&gt;
+    &lt;span class="k"&gt;return&lt;/span&gt; &lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;m&lt;/span&gt;&lt;span class="p"&gt;[&lt;/span&gt;&lt;span class="mi"&gt;0&lt;/span&gt;&lt;span class="p"&gt;][&lt;/span&gt;&lt;span class="mi"&gt;6&lt;/span&gt;&lt;span class="p"&gt;],&lt;/span&gt; &lt;span class="n"&gt;m&lt;/span&gt;&lt;span class="p"&gt;[&lt;/span&gt;&lt;span class="mi"&gt;1&lt;/span&gt;&lt;span class="p"&gt;])&lt;/span&gt;
+
+&lt;span class="c1"&gt;# Split squeezenet model on maxpool layers&lt;/span&gt;
+&lt;span class="k"&gt;def&lt;/span&gt; &lt;span class="nf"&gt;_squeezenet_split&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;m&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt; &lt;span class="n"&gt;nn&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;Module&lt;/span&gt;&lt;span class="p"&gt;):&lt;/span&gt;
+    &lt;span class="k"&gt;return&lt;/span&gt; &lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;m&lt;/span&gt;&lt;span class="p"&gt;[&lt;/span&gt;&lt;span class="mi"&gt;0&lt;/span&gt;&lt;span class="p"&gt;][&lt;/span&gt;&lt;span class="mi"&gt;0&lt;/span&gt;&lt;span class="p"&gt;][&lt;/span&gt;&lt;span class="mi"&gt;5&lt;/span&gt;&lt;span class="p"&gt;],&lt;/span&gt; &lt;span class="n"&gt;m&lt;/span&gt;&lt;span class="p"&gt;[&lt;/span&gt;&lt;span class="mi"&gt;0&lt;/span&gt;&lt;span class="p"&gt;][&lt;/span&gt;&lt;span class="mi"&gt;0&lt;/span&gt;&lt;span class="p"&gt;][&lt;/span&gt;&lt;span class="mi"&gt;8&lt;/span&gt;&lt;span class="p"&gt;],&lt;/span&gt; &lt;span class="n"&gt;m&lt;/span&gt;&lt;span class="p"&gt;[&lt;/span&gt;&lt;span class="mi"&gt;1&lt;/span&gt;&lt;span class="p"&gt;])&lt;/span&gt;
+
+&lt;span class="k"&gt;def&lt;/span&gt; &lt;span class="nf"&gt;_densenet_split&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;m&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt; &lt;span class="n"&gt;nn&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;Module&lt;/span&gt;&lt;span class="p"&gt;):&lt;/span&gt;
+    &lt;span class="k"&gt;return&lt;/span&gt; &lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;m&lt;/span&gt;&lt;span class="p"&gt;[&lt;/span&gt;&lt;span class="mi"&gt;0&lt;/span&gt;&lt;span class="p"&gt;][&lt;/span&gt;&lt;span class="mi"&gt;0&lt;/span&gt;&lt;span class="p"&gt;][&lt;/span&gt;&lt;span class="mi"&gt;7&lt;/span&gt;&lt;span class="p"&gt;],&lt;/span&gt; &lt;span class="n"&gt;m&lt;/span&gt;&lt;span class="p"&gt;[&lt;/span&gt;&lt;span class="mi"&gt;1&lt;/span&gt;&lt;span class="p"&gt;])&lt;/span&gt;
+
+&lt;span class="k"&gt;def&lt;/span&gt; &lt;span class="nf"&gt;_vgg_split&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;m&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt; &lt;span class="n"&gt;nn&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;Module&lt;/span&gt;&lt;span class="p"&gt;):&lt;/span&gt;
+    &lt;span class="k"&gt;return&lt;/span&gt; &lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;m&lt;/span&gt;&lt;span class="p"&gt;[&lt;/span&gt;&lt;span class="mi"&gt;0&lt;/span&gt;&lt;span class="p"&gt;][&lt;/span&gt;&lt;span class="mi"&gt;0&lt;/span&gt;&lt;span class="p"&gt;][&lt;/span&gt;&lt;span class="mi"&gt;22&lt;/span&gt;&lt;span class="p"&gt;],&lt;/span&gt; &lt;span class="n"&gt;m&lt;/span&gt;&lt;span class="p"&gt;[&lt;/span&gt;&lt;span class="mi"&gt;1&lt;/span&gt;&lt;span class="p"&gt;])&lt;/span&gt;
+
+&lt;span class="k"&gt;def&lt;/span&gt; &lt;span class="nf"&gt;_alexnet_split&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;m&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt; &lt;span class="n"&gt;nn&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;Module&lt;/span&gt;&lt;span class="p"&gt;):&lt;/span&gt;
+    &lt;span class="k"&gt;return&lt;/span&gt; &lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;m&lt;/span&gt;&lt;span class="p"&gt;[&lt;/span&gt;&lt;span class="mi"&gt;0&lt;/span&gt;&lt;span class="p"&gt;][&lt;/span&gt;&lt;span class="mi"&gt;0&lt;/span&gt;&lt;span class="p"&gt;][&lt;/span&gt;&lt;span class="mi"&gt;6&lt;/span&gt;&lt;span class="p"&gt;],&lt;/span&gt; &lt;span class="n"&gt;m&lt;/span&gt;&lt;span class="p"&gt;[&lt;/span&gt;&lt;span class="mi"&gt;1&lt;/span&gt;&lt;span class="p"&gt;])&lt;/span&gt;
+
+&lt;span class="n"&gt;_default_meta&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="p"&gt;{&lt;/span&gt;&lt;span class="s1"&gt;&amp;#39;cut&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt; &lt;span class="bp"&gt;None&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="s1"&gt;&amp;#39;split&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt; &lt;span class="n"&gt;_default_split&lt;/span&gt;&lt;span class="p"&gt;}&lt;/span&gt;
+&lt;span class="n"&gt;_resnet_meta&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="p"&gt;{&lt;/span&gt;&lt;span class="s1"&gt;&amp;#39;cut&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt; &lt;span class="o"&gt;-&lt;/span&gt;&lt;span class="mi"&gt;2&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="s1"&gt;&amp;#39;split&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt; &lt;span class="n"&gt;_resnet_split&lt;/span&gt;&lt;span class="p"&gt;}&lt;/span&gt;
+&lt;span class="n"&gt;_squeezenet_meta&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="p"&gt;{&lt;/span&gt;&lt;span class="s1"&gt;&amp;#39;cut&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt; &lt;span class="o"&gt;-&lt;/span&gt;&lt;span class="mi"&gt;1&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="s1"&gt;&amp;#39;split&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt; &lt;span class="n"&gt;_squeezenet_split&lt;/span&gt;&lt;span class="p"&gt;}&lt;/span&gt;
+&lt;span class="n"&gt;_densenet_meta&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="p"&gt;{&lt;/span&gt;&lt;span class="s1"&gt;&amp;#39;cut&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt; &lt;span class="o"&gt;-&lt;/span&gt;&lt;span class="mi"&gt;1&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="s1"&gt;&amp;#39;split&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt; &lt;span class="n"&gt;_densenet_split&lt;/span&gt;&lt;span class="p"&gt;}&lt;/span&gt;
+&lt;span class="n"&gt;_vgg_meta&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="p"&gt;{&lt;/span&gt;&lt;span class="s1"&gt;&amp;#39;cut&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt; &lt;span class="o"&gt;-&lt;/span&gt;&lt;span class="mi"&gt;1&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="s1"&gt;&amp;#39;split&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt; &lt;span class="n"&gt;_vgg_split&lt;/span&gt;&lt;span class="p"&gt;}&lt;/span&gt;
+&lt;span class="n"&gt;_alexnet_meta&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="p"&gt;{&lt;/span&gt;&lt;span class="s1"&gt;&amp;#39;cut&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt; &lt;span class="o"&gt;-&lt;/span&gt;&lt;span class="mi"&gt;1&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="s1"&gt;&amp;#39;split&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt; &lt;span class="n"&gt;_alexnet_split&lt;/span&gt;&lt;span class="p"&gt;}&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;然而光看这段代码， 我们仍然会一头雾水，&lt;code&gt;m[0][0][6]&lt;/code&gt; ,  &lt;code&gt;m[1]&lt;/code&gt;  这些 magic number 到底是怎样来的。&lt;/p&gt;
+&lt;p&gt;下面让我们以 alenxnet 为例, 深入看下这块的实现:&lt;/p&gt;
+&lt;p&gt;注: &lt;code&gt;fastai.vision.models&lt;/code&gt; 下的很多模型是直接用的的 &lt;code&gt;torchvision&lt;/code&gt; 里的模型&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;torchvision/models/alexnet.py&lt;/strong&gt;&lt;/p&gt;
+&lt;div class="highlight snippet"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="k"&gt;class&lt;/span&gt; &lt;span class="nc"&gt;AlexNet&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;nn&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;Module&lt;/span&gt;&lt;span class="p"&gt;):&lt;/span&gt;
+    &lt;span class="k"&gt;def&lt;/span&gt; &lt;span class="fm"&gt;__init__&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="bp"&gt;self&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;num_classes&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="mi"&gt;1000&lt;/span&gt;&lt;span class="p"&gt;):&lt;/span&gt;
+        &lt;span class="nb"&gt;super&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;AlexNet&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="bp"&gt;self&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="fm"&gt;__init__&lt;/span&gt;&lt;span class="p"&gt;()&lt;/span&gt;
+        &lt;span class="bp"&gt;self&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;features&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;nn&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;Sequential&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;
+            &lt;span class="n"&gt;nn&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;Conv2d&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="mi"&gt;3&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="mi"&gt;64&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;kernel_size&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="mi"&gt;11&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;stride&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="mi"&gt;4&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;padding&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="mi"&gt;2&lt;/span&gt;&lt;span class="p"&gt;),&lt;/span&gt;
+            &lt;span class="n"&gt;nn&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;ReLU&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;inplace&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="bp"&gt;True&lt;/span&gt;&lt;span class="p"&gt;),&lt;/span&gt;
+            &lt;span class="n"&gt;nn&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;MaxPool2d&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;kernel_size&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="mi"&gt;3&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;stride&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="mi"&gt;2&lt;/span&gt;&lt;span class="p"&gt;),&lt;/span&gt;
+            &lt;span class="n"&gt;nn&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;Conv2d&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="mi"&gt;64&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="mi"&gt;192&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;kernel_size&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="mi"&gt;5&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;padding&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="mi"&gt;2&lt;/span&gt;&lt;span class="p"&gt;),&lt;/span&gt;
+            &lt;span class="n"&gt;nn&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;ReLU&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;inplace&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="bp"&gt;True&lt;/span&gt;&lt;span class="p"&gt;),&lt;/span&gt;
+            &lt;span class="n"&gt;nn&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;MaxPool2d&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;kernel_size&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="mi"&gt;3&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;stride&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="mi"&gt;2&lt;/span&gt;&lt;span class="p"&gt;),&lt;/span&gt;
+            &lt;span class="n"&gt;nn&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;Conv2d&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="mi"&gt;192&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="mi"&gt;384&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;kernel_size&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="mi"&gt;3&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;padding&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="mi"&gt;1&lt;/span&gt;&lt;span class="p"&gt;),&lt;/span&gt;
+            &lt;span class="n"&gt;nn&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;ReLU&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;inplace&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="bp"&gt;True&lt;/span&gt;&lt;span class="p"&gt;),&lt;/span&gt;
+            &lt;span class="n"&gt;nn&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;Conv2d&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="mi"&gt;384&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="mi"&gt;256&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;kernel_size&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="mi"&gt;3&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;padding&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="mi"&gt;1&lt;/span&gt;&lt;span class="p"&gt;),&lt;/span&gt;
+            &lt;span class="n"&gt;nn&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;ReLU&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;inplace&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="bp"&gt;True&lt;/span&gt;&lt;span class="p"&gt;),&lt;/span&gt;
+            &lt;span class="n"&gt;nn&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;Conv2d&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="mi"&gt;256&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="mi"&gt;256&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;kernel_size&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="mi"&gt;3&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;padding&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="mi"&gt;1&lt;/span&gt;&lt;span class="p"&gt;),&lt;/span&gt;
+            &lt;span class="n"&gt;nn&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;ReLU&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;inplace&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="bp"&gt;True&lt;/span&gt;&lt;span class="p"&gt;),&lt;/span&gt;
+            &lt;span class="n"&gt;nn&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;MaxPool2d&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;kernel_size&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="mi"&gt;3&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;stride&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="mi"&gt;2&lt;/span&gt;&lt;span class="p"&gt;),&lt;/span&gt;
+        &lt;span class="p"&gt;)&lt;/span&gt;
+        &lt;span class="bp"&gt;self&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;avgpool&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;nn&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;AdaptiveAvgPool2d&lt;/span&gt;&lt;span class="p"&gt;((&lt;/span&gt;&lt;span class="mi"&gt;6&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="mi"&gt;6&lt;/span&gt;&lt;span class="p"&gt;))&lt;/span&gt;
+        &lt;span class="bp"&gt;self&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;classifier&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;nn&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;Sequential&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;
+            &lt;span class="n"&gt;nn&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;Dropout&lt;/span&gt;&lt;span class="p"&gt;(),&lt;/span&gt;
+            &lt;span class="n"&gt;nn&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;Linear&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="mi"&gt;256&lt;/span&gt; &lt;span class="o"&gt;*&lt;/span&gt; &lt;span class="mi"&gt;6&lt;/span&gt; &lt;span class="o"&gt;*&lt;/span&gt; &lt;span class="mi"&gt;6&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="mi"&gt;4096&lt;/span&gt;&lt;span class="p"&gt;),&lt;/span&gt;
+            &lt;span class="n"&gt;nn&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;ReLU&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;inplace&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="bp"&gt;True&lt;/span&gt;&lt;span class="p"&gt;),&lt;/span&gt;
+            &lt;span class="n"&gt;nn&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;Dropout&lt;/span&gt;&lt;span class="p"&gt;(),&lt;/span&gt;
+            &lt;span class="n"&gt;nn&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;Linear&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="mi"&gt;4096&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="mi"&gt;4096&lt;/span&gt;&lt;span class="p"&gt;),&lt;/span&gt;
+            &lt;span class="n"&gt;nn&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;ReLU&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;inplace&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="bp"&gt;True&lt;/span&gt;&lt;span class="p"&gt;),&lt;/span&gt;
+            &lt;span class="n"&gt;nn&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;Linear&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="mi"&gt;4096&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;num_classes&lt;/span&gt;&lt;span class="p"&gt;),&lt;/span&gt;
+        &lt;span class="p"&gt;)&lt;/span&gt;
+
+    &lt;span class="k"&gt;def&lt;/span&gt; &lt;span class="nf"&gt;forward&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="bp"&gt;self&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;x&lt;/span&gt;&lt;span class="p"&gt;):&lt;/span&gt;
+        &lt;span class="n"&gt;x&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="bp"&gt;self&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;features&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;x&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+        &lt;span class="n"&gt;x&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="bp"&gt;self&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;avgpool&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;x&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+        &lt;span class="n"&gt;x&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;x&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;view&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;x&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;size&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="mi"&gt;0&lt;/span&gt;&lt;span class="p"&gt;),&lt;/span&gt; &lt;span class="mi"&gt;256&lt;/span&gt; &lt;span class="o"&gt;*&lt;/span&gt; &lt;span class="mi"&gt;6&lt;/span&gt; &lt;span class="o"&gt;*&lt;/span&gt; &lt;span class="mi"&gt;6&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+        &lt;span class="n"&gt;x&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="bp"&gt;self&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;classifier&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;x&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+        &lt;span class="k"&gt;return&lt;/span&gt; &lt;span class="n"&gt;x&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;可以看出 &lt;code&gt;torchvision&lt;/code&gt; 的实现里把 AlexNet Model 所有 layers 划分为了 3个  &lt;code&gt;nn.Sequential&lt;/code&gt; 串:&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;features&lt;/li&gt;
+&lt;li&gt;avgpool&lt;/li&gt;
+&lt;li&gt;classifier&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;注: AlexNet 作为一种顺序模型， 其实只用一串 &lt;code&gt;nn.Sequential&lt;/code&gt; 块 就可以实现了。 而&lt;code&gt;torchvision&lt;/code&gt; 为了代码组织更加清晰和易用， 才按照 layer 的功能划分了 3串。&lt;/p&gt;
+&lt;p&gt;打印出来的模型结构如下:&lt;/p&gt;
+&lt;div class="highlight snippet"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="n"&gt;AlexNet&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;
+  &lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;features&lt;/span&gt;&lt;span class="p"&gt;):&lt;/span&gt; &lt;span class="n"&gt;Sequential&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;
+    &lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="mi"&gt;0&lt;/span&gt;&lt;span class="p"&gt;):&lt;/span&gt; &lt;span class="n"&gt;Conv2d&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="mi"&gt;3&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="mi"&gt;64&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;kernel_size&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="mi"&gt;11&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="mi"&gt;11&lt;/span&gt;&lt;span class="p"&gt;),&lt;/span&gt; &lt;span class="n"&gt;stride&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="mi"&gt;4&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="mi"&gt;4&lt;/span&gt;&lt;span class="p"&gt;),&lt;/span&gt; &lt;span class="n"&gt;padding&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="mi"&gt;2&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="mi"&gt;2&lt;/span&gt;&lt;span class="p"&gt;))&lt;/span&gt;
+    &lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="mi"&gt;1&lt;/span&gt;&lt;span class="p"&gt;):&lt;/span&gt; &lt;span class="n"&gt;ReLU&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;inplace&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+    &lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="mi"&gt;2&lt;/span&gt;&lt;span class="p"&gt;):&lt;/span&gt; &lt;span class="n"&gt;MaxPool2d&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;kernel_size&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="mi"&gt;3&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;stride&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="mi"&gt;2&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;padding&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="mi"&gt;0&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;dilation&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="mi"&gt;1&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;ceil_mode&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="k"&gt;False&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+    &lt;span class="p"&gt;...&lt;/span&gt;
+    &lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="mi"&gt;5&lt;/span&gt;&lt;span class="p"&gt;):&lt;/span&gt; &lt;span class="n"&gt;MaxPool2d&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;kernel_size&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="mi"&gt;3&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;stride&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="mi"&gt;2&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;padding&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="mi"&gt;0&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;dilation&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="mi"&gt;1&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;ceil_mode&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="k"&gt;False&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+    &lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="mi"&gt;6&lt;/span&gt;&lt;span class="p"&gt;):&lt;/span&gt; &lt;span class="n"&gt;Conv2d&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="mi"&gt;192&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="mi"&gt;384&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;kernel_size&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="mi"&gt;3&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="mi"&gt;3&lt;/span&gt;&lt;span class="p"&gt;),&lt;/span&gt; &lt;span class="n"&gt;stride&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="mi"&gt;1&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="mi"&gt;1&lt;/span&gt;&lt;span class="p"&gt;),&lt;/span&gt; &lt;span class="n"&gt;padding&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="mi"&gt;1&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="mi"&gt;1&lt;/span&gt;&lt;span class="p"&gt;))&lt;/span&gt;
+    &lt;span class="p"&gt;...&lt;/span&gt;
+    &lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="mi"&gt;10&lt;/span&gt;&lt;span class="p"&gt;):&lt;/span&gt; &lt;span class="n"&gt;Conv2d&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="mi"&gt;256&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="mi"&gt;256&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;kernel_size&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="mi"&gt;3&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="mi"&gt;3&lt;/span&gt;&lt;span class="p"&gt;),&lt;/span&gt; &lt;span class="n"&gt;stride&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="mi"&gt;1&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="mi"&gt;1&lt;/span&gt;&lt;span class="p"&gt;),&lt;/span&gt; &lt;span class="n"&gt;padding&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="mi"&gt;1&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="mi"&gt;1&lt;/span&gt;&lt;span class="p"&gt;))&lt;/span&gt;
+    &lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="mi"&gt;11&lt;/span&gt;&lt;span class="p"&gt;):&lt;/span&gt; &lt;span class="n"&gt;ReLU&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;inplace&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+    &lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="mi"&gt;12&lt;/span&gt;&lt;span class="p"&gt;):&lt;/span&gt; &lt;span class="n"&gt;MaxPool2d&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;kernel_size&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="mi"&gt;3&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;stride&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="mi"&gt;2&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;padding&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="mi"&gt;0&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;dilation&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="mi"&gt;1&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;ceil_mode&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="k"&gt;False&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+  &lt;span class="p"&gt;)&lt;/span&gt;
+  &lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;avgpool&lt;/span&gt;&lt;span class="p"&gt;):&lt;/span&gt; &lt;span class="n"&gt;AdaptiveAvgPool2d&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;output_size&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="mi"&gt;6&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="mi"&gt;6&lt;/span&gt;&lt;span class="p"&gt;))&lt;/span&gt;
+  &lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;classifier&lt;/span&gt;&lt;span class="p"&gt;):&lt;/span&gt; &lt;span class="n"&gt;Sequential&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;
+    &lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="mi"&gt;0&lt;/span&gt;&lt;span class="p"&gt;):&lt;/span&gt; &lt;span class="n"&gt;Dropout&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;p&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="mi"&gt;0&lt;/span&gt;&lt;span class="p"&gt;.&lt;/span&gt;&lt;span class="mi"&gt;5&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+    &lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="mi"&gt;1&lt;/span&gt;&lt;span class="p"&gt;):&lt;/span&gt; &lt;span class="n"&gt;Linear&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;in_features&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="mi"&gt;9216&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;out_features&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="mi"&gt;4096&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;bias&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="k"&gt;True&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+    &lt;span class="p"&gt;...&lt;/span&gt;
+    &lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="mi"&gt;6&lt;/span&gt;&lt;span class="p"&gt;):&lt;/span&gt; &lt;span class="n"&gt;Linear&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;in_features&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="mi"&gt;4096&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;out_features&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="mi"&gt;1000&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;bias&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="k"&gt;True&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+  &lt;span class="p"&gt;)&lt;/span&gt;
+&lt;span class="p"&gt;)&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;这里的AlexNet模型并不是我们最终使用的模型， 它的结构是针对 ImageNet 数据集设计的， 解决的是 1000个类别图片的分类问题， 因此我们还会对它进行改造:&lt;/p&gt;
+&lt;p&gt;&lt;code&gt;cnn_learner()&lt;/code&gt; 通过调用 &lt;code&gt;create_cnn_model()&lt;/code&gt; 来创建 实际使用的模型:&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;fastai/vision/learner.py&lt;/strong&gt;&lt;/p&gt;
+&lt;div class="highlight snippet"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="k"&gt;def&lt;/span&gt; &lt;span class="nf"&gt;create_cnn_model&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;base_arch&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;nc&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;cut&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="err"&gt;。。。&lt;/span&gt;&lt;span class="p"&gt;):&lt;/span&gt;
+    &lt;span class="s2"&gt;&amp;quot;Create custom convnet architecture&amp;quot;&lt;/span&gt;
+    &lt;span class="n"&gt;body&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;create_body&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;base_arch&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;pretrained&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;cut&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+    &lt;span class="o"&gt;...&lt;/span&gt;
+    &lt;span class="n"&gt;head&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;create_head&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="o"&gt;...&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+    &lt;span class="k"&gt;return&lt;/span&gt; &lt;span class="n"&gt;nn&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;Sequential&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;body&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;head&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;可见 fastai 创建出来的模型是由 body 和 head 两块拼接而成:&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;
+&lt;p&gt;body 是在预训练模型(e.g. AlexNet) 上 丢弃若干层网络得到的
+ &lt;code&gt;create_body()&lt;/code&gt; 具体会丢弃哪些层， 是由 model 的 &lt;code&gt;meta['cut']&lt;/code&gt; 参数决定的。
+在上文的 代码里， 我们可以看到 &lt;code&gt;_alexnet_meta['cut']&lt;/code&gt; 的值为 -1. 这意味着丢弃 AlexNet 的最后一串 layer， 即前文提到的 &lt;code&gt;classifier&lt;/code&gt; Sequential.&lt;/p&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;p&gt;head 的结构只和我们的数据有多少类别有关， 和body 用的是alexnet, 还是 vgg 或 resnet 没有关系。 其具体结构， 下文会讲。&lt;/p&gt;
+&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;最终的模型结构课简化如下:&lt;/p&gt;
+&lt;div class="highlight snippet"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;
+    &lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;body&lt;/span&gt;&lt;span class="p"&gt;):&lt;/span&gt; &lt;span class="p"&gt;(&lt;/span&gt;
+        &lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;features&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+        &lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;avgpool&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+    &lt;span class="p"&gt;)&lt;/span&gt;
+    &lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;head&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+&lt;span class="p"&gt;)&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;现在 再回过头看 alexnet 的 &lt;code&gt;split_on&lt;/code&gt; 函数就比较好理解了:&lt;/p&gt;
+&lt;div class="highlight snippet"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="k"&gt;def&lt;/span&gt; &lt;span class="nf"&gt;_alexnet_split&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;m&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt; &lt;span class="n"&gt;nn&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;Module&lt;/span&gt;&lt;span class="p"&gt;):&lt;/span&gt;
+    &lt;span class="k"&gt;return&lt;/span&gt; &lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;m&lt;/span&gt;&lt;span class="p"&gt;[&lt;/span&gt;&lt;span class="mi"&gt;0&lt;/span&gt;&lt;span class="p"&gt;][&lt;/span&gt;&lt;span class="mi"&gt;0&lt;/span&gt;&lt;span class="p"&gt;][&lt;/span&gt;&lt;span class="mi"&gt;6&lt;/span&gt;&lt;span class="p"&gt;],&lt;/span&gt; &lt;span class="n"&gt;m&lt;/span&gt;&lt;span class="p"&gt;[&lt;/span&gt;&lt;span class="mi"&gt;1&lt;/span&gt;&lt;span class="p"&gt;])&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;&lt;code&gt;m[0]&lt;/code&gt; 为 &lt;code&gt;body&lt;/code&gt;,  &lt;code&gt;m[0][0]&lt;/code&gt; 即 &lt;code&gt;features&lt;/code&gt;， &lt;code&gt;m[1]&lt;/code&gt; 即 &lt;code&gt;head&lt;/code&gt;&lt;/p&gt;
+&lt;p&gt;&lt;code&gt;(m[0][0][6], m[1])&lt;/code&gt; 意味着  features 的 前6层 划为第一个 layer group, 第7层到 head 划分为第而个 layer group， head 作为第三个 layer group。&lt;/p&gt;
+&lt;p&gt;由于 head 层是我们自己添加的， 是预训练模型里不存在的, 它的 learning rate 显然应该和预训练模型不同， 这也是所有的 &lt;code&gt;split_on&lt;/code&gt; 函数都包含 &lt;code&gt;m[1]&lt;/code&gt; 这一项的原因。&lt;/p&gt;
+&lt;p&gt;至于 AlexNet 为什么选择在 &lt;code&gt;m[0][0][6]&lt;/code&gt; 处切一下， vgg 在 &lt;code&gt;m[0][0][22]&lt;/code&gt;切一下， resnet 在 &lt;code&gt;m[0][6]&lt;/code&gt; 切一下， 经过分析这些模型的结构，可发现这些切割垫都是卷积层中间的位置。&lt;/p&gt;
+&lt;h2&gt;总结&lt;/h2&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;code&gt;meta['split']&lt;/code&gt; 决定了 model 怎样划分 layer groups&lt;/li&gt;
+&lt;li&gt;&lt;code&gt;meta['cut']&lt;/code&gt; 决定了预训练模型会丢弃哪些层&lt;/li&gt;
+&lt;li&gt;绝大部分 CNN 模型会被划分为 3 个 layer group， 预训练模型的卷积层会从中间划分为 2 个 group, 分类器1个 group&lt;/li&gt;
+&lt;/ul&gt;</summary><category term="fastai pytorch"></category></entry><entry><title>Tensorflow 和 PyTorch 如何快速切换使用的 CPU/GPU 设备</title><link href="https://wing2south.com/post/tensorflow-pytorch-devide-switch/" rel="alternate"></link><published>2018-10-07T00:00:00+08:00</published><updated>2018-10-07T00:00:00+08:00</updated><author><name>Leonardo Zhou</name></author><id>tag:wing2south.com,2018-10-07:post/tensorflow-pytorch-devide-switch/</id><summary type="html">&lt;p&gt;在做机器学习时， 常遇到这样的场景: 模型有时要跑在 CPU 上，有时要跑在 GPU 上， 有时又要跑在 某块指定的 GPU 上。&lt;/p&gt;
+&lt;p&gt;对于开源项目， 我们更是无法确定用户要使用怎样的设备， 要是换个设备， 就要大改代码， 就很糟糕了。&lt;/p&gt;
+&lt;p&gt;本文就简要介绍下 Tensorflow 和 PyTorch 这两个最常用的深度学习框架下， 怎样来最便捷地切换使用的设备。&lt;/p&gt;
+&lt;h2&gt;Tensorflow&lt;/h2&gt;
+&lt;p&gt;在 Tensorflow 里的实现很简单， 我们把相应的代码放到一个 &lt;code&gt;tf.device&lt;/code&gt; 块里就行了。&lt;/p&gt;
+&lt;div class="highlight snippet"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="k"&gt;with&lt;/span&gt; &lt;span class="n"&gt;tf&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;device&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="s1"&gt;&amp;#39;/cpu:0&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;):&lt;/span&gt;
+    &lt;span class="n"&gt;a&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;tf&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;constant&lt;/span&gt;&lt;span class="p"&gt;([&lt;/span&gt;&lt;span class="mf"&gt;1.0&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="mf"&gt;2.0&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="mf"&gt;3.0&lt;/span&gt;&lt;span class="p"&gt;,],&lt;/span&gt; &lt;span class="n"&gt;shape&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="p"&gt;[&lt;/span&gt;&lt;span class="mi"&gt;2&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="mi"&gt;3&lt;/span&gt;&lt;span class="p"&gt;])&lt;/span&gt;
+    &lt;span class="n"&gt;b&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;tf&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;constant&lt;/span&gt;&lt;span class="p"&gt;([&lt;/span&gt;&lt;span class="mf"&gt;1.0&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="mf"&gt;2.0&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="mf"&gt;3.0&lt;/span&gt;&lt;span class="p"&gt;,],&lt;/span&gt; &lt;span class="n"&gt;shape&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="p"&gt;[&lt;/span&gt;&lt;span class="mi"&gt;3&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="mi"&gt;2&lt;/span&gt;&lt;span class="p"&gt;])&lt;/span&gt;
+    &lt;span class="n"&gt;c&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;append&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;tf&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;matmul&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;a&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;b&lt;/span&gt;&lt;span class="p"&gt;))&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;也可以指定一个 session 所能使用的设备:&lt;/p&gt;
+&lt;div class="highlight snippet"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="n"&gt;config&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;tf&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;ConfigProto&lt;/span&gt;&lt;span class="p"&gt;()&lt;/span&gt;
+&lt;span class="n"&gt;config&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;gpu_options&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;visible_device_list&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="s1"&gt;&amp;#39;1&amp;#39;&lt;/span&gt; &lt;span class="c1"&gt;# GPU 的序号&lt;/span&gt;
+&lt;span class="n"&gt;config&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;device_count&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="p"&gt;{&lt;/span&gt;&lt;span class="s1"&gt;&amp;#39;GPU&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt; &lt;span class="mi"&gt;1&lt;/span&gt;&lt;span class="p"&gt;})&lt;/span&gt; &lt;span class="c1"&gt;# 1： 只用 GPU, 0: 只用CPU&lt;/span&gt;
+&lt;span class="n"&gt;session&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;tf&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;Session&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;config&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="n"&gt;config&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="o"&gt;...&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;如果想把设备和代码完全分离， 我们还可以通过设置&lt;code&gt;CUDA_VISIBLE_DEVICES&lt;/code&gt;环境变量来实现:&lt;/p&gt;
+&lt;div class="highlight snippet"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="nv"&gt;CUDA_VISIBLE_DEVICES&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="s2"&gt;&amp;quot;0,2,3&amp;quot;&lt;/span&gt; python model.py &lt;span class="c1"&gt;# 使用 GPU 0, 2,3&lt;/span&gt;
+&lt;span class="nv"&gt;CUDA_VISIBLE_DEVICES&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="s2"&gt;&amp;quot;&amp;quot;&lt;/span&gt; python model.py &lt;span class="c1"&gt;# 使用 CPU&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;以上 3 种实现方式的作用范围， 由小而大。 with block 只会影响其代码块， 而 环境变量会影响整个程序。&lt;/p&gt;
+&lt;h2&gt;PyTorch&lt;/h2&gt;
+&lt;p&gt;在 PyTorch 的早期版本里， 官方没有提供一个切换设备的方法， 各种第三方实现也比较 ugly。
+PyTorch 创建的 tensor 默认是 跑在CPU 上的, 我们如果要创建一个 在 GPU 上运行的 tensor 需要调用 &lt;code&gt;.cuda()&lt;/code&gt; 方法。  e.g.  &lt;code&gt;torch.rand(3,3).cuda()&lt;/code&gt;。&lt;/p&gt;
+&lt;p&gt;因此在早期 PyTorch 代码里， 常用下面的模式， 去做兼容：&lt;/p&gt;
+&lt;div class="highlight snippet"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="n"&gt;x&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;x&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;new_ones&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="mi"&gt;5&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="mi"&gt;3&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;dtype&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="n"&gt;torch&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;float&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+&lt;span class="n"&gt;y&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;torch&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;rand&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="mi"&gt;5&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="mi"&gt;3&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+&lt;span class="k"&gt;if&lt;/span&gt; &lt;span class="n"&gt;use_cuda&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt;
+    &lt;span class="n"&gt;x&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;x&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;cuda&lt;/span&gt;&lt;span class="p"&gt;()&lt;/span&gt;
+    &lt;span class="n"&gt;y&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;y&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;cuda&lt;/span&gt;&lt;span class="p"&gt;()&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;直到 2018年4月底， PyTorch 0.4.0 发布后， PyTorch 才有了一种更优雅的写法:  使用&lt;code&gt;to()&lt;/code&gt; 方法。
+&lt;code&gt;to()&lt;/code&gt; 可接受一个 &lt;code&gt;device&lt;/code&gt; 参数，而不像 &lt;code&gt;.cuda()&lt;/code&gt; 是写死了的。&lt;/p&gt;
+&lt;div class="highlight snippet"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="n"&gt;device&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;torch&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;device&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="s2"&gt;&amp;quot;cuda:0&amp;quot;&lt;/span&gt; &lt;span class="k"&gt;if&lt;/span&gt; &lt;span class="n"&gt;torch&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;cuda&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;is_available&lt;/span&gt;&lt;span class="p"&gt;()&lt;/span&gt; &lt;span class="k"&gt;else&lt;/span&gt; &lt;span class="s2"&gt;&amp;quot;cpu&amp;quot;&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+&lt;span class="o"&gt;...&lt;/span&gt;
+&lt;span class="n"&gt;x&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;x&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;to&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;device&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+&lt;span class="n"&gt;model&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;MyModule&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="o"&gt;...&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;to&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;device&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;一言以蔽之， 将以前 Pytorch 代码里 &lt;code&gt;.cuda()&lt;/code&gt; 替换成 &lt;code&gt;.to(device)&lt;/code&gt; 就行了。&lt;/p&gt;
+&lt;p&gt;这种写法相比于 Tensorflow 仍略欠优雅, 但根据 github issue 里的反馈， 官方也不打算在这方面再做优化了。 PyTorch 官方文档里也已经基本改成 &lt;code&gt;.to(device)&lt;/code&gt; 这种写法。 大家可以撸起袖子改代码啦！&lt;/p&gt;</summary></entry><entry><title>显卡不够云来凑 - 如何选择用于深度学习的云主机</title><link href="https://wing2south.com/post/machine-learning-on-cloud/" rel="alternate"></link><published>2018-02-16T00:00:00+08:00</published><updated>2018-02-16T00:00:00+08:00</updated><author><name>Leonardo Zhou</name></author><id>tag:wing2south.com,2018-02-16:post/machine-learning-on-cloud/</id><summary type="html">&lt;p&gt;自从前两年 AlphaGO 先后战胜李世石和柯杰， 。&lt;/p&gt;
+&lt;p&gt;在本文的开头，我觉得有必要强调一点: 目前个人用户使用带显卡的云主机在做深度学习，从性价比上来说，通常没有自己买显卡合算。&lt;/p&gt;
+&lt;p&gt;相信很多读者会有疑问， 既然如此， 那本文的目的何在？ 这不是在坑大家吗。 答案是。 首先不是所有品牌的显卡能用来跑深度学习。 其次，显卡的配置不能太低。不建议用6G 显存。 笔记本用户， 要换显卡的话， 难度要比PC大很多。 PC 用户的话， 一些。有这么多因素制约，很多同学一上来学习热情很高涨， 结果在搭建环境上，就打了退堂鼓。&lt;/p&gt;
+&lt;p&gt;尽管云主机在性价比上没有多少优势，他有人立即上手机器学习。 有些人的机器可能显卡配置不高，有些人的笔记本可能升级显卡比较困难，有些人机器的显卡可能在高负载下散热很差，不要让这些事阻碍你去尝试深度学习。&lt;/p&gt;</summary></entry><entry><title>加速 NLTK 数据包 (NLTK Data) 的下载速度的几种方法</title><link href="https://wing2south.com/post/speedup-ntlk-data-download/" rel="alternate"></link><published>2017-05-06T17:27:00+08:00</published><updated>2017-05-06T17:27:00+08:00</updated><author><name>Leonardo Zhou</name></author><id>tag:wing2south.com,2017-05-06:post/speedup-ntlk-data-download/</id><summary type="html">&lt;p&gt;NLTK 是一个在 Python 自然语言处理领域里非常流行的的一个包。NLTK 本身的安装比较简单 (如果是缺少编译环境的 Windows 系统， 推荐用 conda 安装 )，教程也比较多， 这里不再赘述。&lt;/p&gt;
+&lt;p&gt;然而要让 NLTK 真正工作起来，我们还需要去网上下载各种语料库、语法库和训练模型。由于网络原因，这个下载过程可能比较耗时，或经常失败。下面就简要介绍几个小技巧来加速这一过程。&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;只下载你需要的数据包&lt;/strong&gt;&lt;/p&gt;
+&lt;p&gt;NLTK 提供了十分丰富的自然语言数据包， 其中大多数体积都比较小，也有少数体积比较大, 会有几个G。 通常你并不需要所有的数据包，只下载那些你需要的， 显然可以快很多。&lt;/p&gt;
+&lt;p&gt;完整的 NLTK Data 列表可以访问 http://www.nltk.org/nltk_data/ 得到。&lt;/p&gt;
+&lt;p&gt;通过 Python shell 下载:&lt;/p&gt;
+&lt;div class="highlight snippet"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="kn"&gt;import&lt;/span&gt; &lt;span class="nn"&gt;nltk&lt;/span&gt;
+&lt;span class="c1"&gt;# nltk.download() 不指定数据包的名字时， 默认下载全部数据&lt;/span&gt;
+&lt;span class="n"&gt;nltk&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;download&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="s1"&gt;&amp;#39;stopwords&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;或者在命令行里运行 &lt;code&gt;python -m nltk.downloader &amp;lt;数据包名&amp;gt;&lt;/code&gt;&lt;/p&gt;
+&lt;p&gt;如果是在桌面环境下执行上述命令的话, NLTK 会弹出一个用 Tkinter 写的 图形化窗口， 可以更加方便地选择要下载的数据包。
+&lt;img alt="nltk_data_path" src="http://wing2south.qiniudn.com/images/nltk_data_path.png" /&gt;&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;通过代理下载&lt;/strong&gt;&lt;/p&gt;
+&lt;p&gt;现在 NLTK 的数据是托管在 Github 上的。 由于一些众做周知的原因， Github 在天朝的网络下时常不太稳定。 考虑到很多程序员都会自备&lt;em&gt;梯子&lt;/em&gt;，我们可以让 NLTK 通过代理来下载软件包。 一个稳定的代理不仅能避免连接被重置而导致的下载失败， 往往也能提高下载速度。&lt;/p&gt;
+&lt;p&gt;在 Python shell 里指定代理：&lt;/p&gt;
+&lt;div class="highlight snippet"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="n"&gt;nltk&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;set_proxy&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="s1"&gt;&amp;#39;http://proxy&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="s1"&gt;&amp;#39;USERNAME&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="s1"&gt;&amp;#39;PASSWORD&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;))&lt;/span&gt;
+&lt;span class="n"&gt;nltk&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;download&lt;/span&gt;&lt;span class="p"&gt;()&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;如果是在命令行里通过 &lt;code&gt;`python -m&lt;/code&gt; 的方式下载的话， 可以通过设置 &lt;code&gt;HTTP_PROXY&lt;/code&gt; 环境变量来指定代理。&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;通过其他工具下载&lt;/strong&gt;&lt;/p&gt;
+&lt;p&gt;当你确实需要某些体积很大的数据包时, 光靠 NLTK 自己提供的下载功能可能就捉襟见肘了(仅针对国内网络而言)。这种情况下， 我们可以借助于 wget/aria2c 这类支持多线程， 断点续传的下载工具。 相关数据包的下载链接可以在 上文中提到  http://www.nltk.org/nltk_data/ 里找到。&lt;/p&gt;
+&lt;p&gt;例如 Brown Corpus 这个数据包 就可以通过 &lt;code&gt;wget https://raw.githubusercontent.com/nltk/nltk_data/gh-pages/packages/corpora/brown.zip&lt;/code&gt; 的方式下载下来。 下载下来 zip 包需要解压到 NLTK 指定的 data 目录的某个子目录下。
+如果是桌面环境， 下载窗口上就会显示 data 目录的路径。 
+&lt;img alt="nltk_packages" src="http://wing2south.qiniudn.com/images/nltk_packages.png" /&gt;&lt;/p&gt;
+&lt;p&gt;如果是命令行环境,可通过下面的代码查看:&lt;/p&gt;
+&lt;div class="highlight snippet"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="kn"&gt;import&lt;/span&gt; &lt;span class="nn"&gt;nltk&lt;/span&gt;
+&lt;span class="n"&gt;nltk&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;data&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;path&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;在我的机器为例，NLTK 的 data 目录是 &lt;code&gt;~/nltk_data&lt;/code&gt; 。 注意刚才的下载 url 是以 &lt;code&gt;corpora/brown.zip&lt;/code&gt; 结尾的， 暗示这是一个 corpora (语料)， 因此这个 zip 文件就要解药到  &lt;code&gt;~/nltk_data/corpora&lt;/code&gt; 目录下。 同理， Grammars from NLTK Book(&lt;code&gt;https://raw.githubusercontent.com/nltk/nltk_data/gh-pages/packages/grammars/book_grammars.zip&lt;/code&gt;) 就要解压到 &lt;code&gt;~/nltk_data/grammars&lt;/code&gt; 目录下。&lt;/p&gt;
+&lt;p&gt;有少数包的下载地址不符合上述规则，如 PanLex Lite Corpus(https://db.panlex.org/panlex_lite-20170401.zip)， 这类数据包一般都是体积较大， 不能托管在 Github 上的， 这类包一般都属于 corpora。&lt;/p&gt;</summary></entry><entry><title>利用 Travis CI + Github 给静态博客加上草稿和编辑预览功能</title><link href="https://wing2south.com/post/advanced-pelican-publish-github-travis/" rel="alternate"></link><published>2016-12-25T14:36:00+08:00</published><updated>2016-12-25T14:36:00+08:00</updated><author><name>Leonardo Zhou</name></author><id>tag:wing2south.com,2016-12-25:post/advanced-pelican-publish-github-travis/</id><summary type="html">&lt;p&gt;最近几年，静态博客超越 wordpress。 在程序员社区， 利用 Github Pages 来托管静态博客更是风靡一时。 其中不少人也开始使用持续集成工具 Travis CI 来自动构建和发布博客。&lt;/p&gt;
+&lt;p&gt;本文介绍了一种使用持续集成工具 Travis CI 来实现自动化发布 Pelican 静态博客到 Github Page.s 的方法。在完成本文所述的配置后，你可以抛开 Python、命令行, 只通过 Github 就能编辑， 发布自己的博客。 通过 git branch 和 Pull request还能实现传统动态博客的草稿和预览功能。&lt;/p&gt;
+&lt;p&gt;想不予， 如今静态博客。
+dao到。&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;Travis CI 是什么？&lt;/strong&gt;
+Travis CI 是一款和 Github 紧密结合的持续集成(CI) 工具。 当你的代码被提交到 Github 后， 会触发 Travis CI 的 webhook, Travis CI 就会自动去执行一些操作， 通常是运行单元测试。当然这种操作并不仅限于单元测试， 实际上你可以用它来执行几乎任何命令。 由于很多静态博客的源文件(例如 markdown) 就是托管在 Github 上， 并使用 Github Pages 发布的， 利用 Travis CI 来自动生成静态博客文件并上传到 Github Pages 就成了一件很自然的事情。通过搜索引擎， 我们可以搜到这方面大量的使用案例。本文碍于篇幅， 这里就不介绍从头搭建一个 Travis CI+ Github 博客的步骤了。 下面推荐的几篇教程都还不错不错， 可以参考: &lt;a href="http://www.jianshu.com/p/e22c13d85659"&gt;手把手教你使用Travis CI自动部署你的Hexo博客到Github上&lt;/a&gt;、 &lt;a href="https://blog.m157q.tw/posts/2016/05/08/use-travis-ci-to-publish-pelican-blog-on-github-pages-automatically/"&gt;用 Travis CI 自動化發佈 Pelican blog 到 GitHub Pages 上&lt;/a&gt;、&lt;a href="http://blog.mathieu-leplatre.info/publish-your-pelican-blog-on-github-pages-via-travis-ci.html"&gt;Publish your Pelican blog on Github pages via Travis-CI&lt;/a&gt;。不同的静态博客工具的配置过程会略有不同， 你也可以用。&lt;/p&gt;
+&lt;p&gt;然而我还是觉得有必要要强调下网上这类教程普遍存在的一个问题: &lt;strong&gt;忽视安全!!!&lt;/strong&gt;
+把博客发布到 Github Page 上的过程说白了就是把 html 文件提交到某个 Github repo 的 gh-page 分支。 要让 Travis CI 能提交文件
+- 不加密。
+- 把使用&lt;/p&gt;
+&lt;h2&gt;在线预览&lt;/h2&gt;
+&lt;p&gt;实在有些&lt;em&gt;鸡肋&lt;/em&gt;。 如果你的本机已经有了 Pelican 的构建环境的话， 构建静态博客并上传到 Github 应该会非常容易。 只要运行 &lt;code&gt;make github&lt;/code&gt; 就行了，速度也比去 Travis CI 绕一圈快的多。
+， 这种情况下&lt;/p&gt;
+&lt;p&gt;这种情况下， 你无法。 虽然 Markdown 格式， 语法十分简单。&lt;/p&gt;
+&lt;p&gt;由于每个 Github repo 只能拥有一个 Github Pages 分支(gh-pages), 我们需要新建一个新的 repo 来存放预览分支。&lt;/p&gt;</summary><category term="pelican"></category></entry><entry><title>REST Client 拾遗</title><link href="https://wing2south.com/post/rest-client-tips/" rel="alternate"></link><published>2015-02-27T20:15:00+08:00</published><updated>2015-02-27T20:15:00+08:00</updated><author><name>Leonardo Zhou</name></author><id>tag:wing2south.com,2015-02-27:post/rest-client-tips/</id><summary type="html">&lt;p&gt;Restful Service 早已不是什么新鲜玩意。 国内很多公司都提供基于 REST 的服务， 其中不少还有官方提供的 多语言 SDK。先不论这些 REST API 的设计， 那些SDK/REST Client 往往并不好用， 在 github 上也能找到大量改良的 fork。这里就分享一些我关于写好 REST Client 的愚见。&lt;/p&gt;
+&lt;h3&gt;REST Client 不是 url 拼接器&lt;/h3&gt;
+&lt;p&gt;相当多的 REST Client 说简单了，就做一件事:&lt;/p&gt;
+&lt;div class="highlight snippet"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="kn"&gt;import&lt;/span&gt; &lt;span class="nn"&gt;request&lt;/span&gt;
+&lt;span class="k"&gt;class&lt;/span&gt; &lt;span class="nc"&gt;Client&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="nb"&gt;object&lt;/span&gt;&lt;span class="p"&gt;):&lt;/span&gt;
+    &lt;span class="k"&gt;def&lt;/span&gt; &lt;span class="nf"&gt;post&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="bp"&gt;self&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;url&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;data&lt;/span&gt;&lt;span class="p"&gt;):&lt;/span&gt;
+        &lt;span class="n"&gt;r&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;request&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;post&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;url&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;data&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+        &lt;span class="k"&gt;return&lt;/span&gt; &lt;span class="n"&gt;r&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;json&lt;/span&gt;&lt;span class="p"&gt;()&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;REST Client 返回给用户的应该是解析好的，有意义的对象， 而不是原始的 JSON。这些对象应该提供一些数据操作接口，可以方便地修改对象所对应的数据。 &lt;/p&gt;
+&lt;p&gt;以新浪微博 API 为例， 官方推荐的 &lt;a href="https://github.com/michaelliao/sinaweibopy"&gt;Python SDK&lt;/a&gt; 只是把 &lt;code&gt;HTTP GET： statuses/user_timeline&lt;/code&gt; 这个请求包装成了 &lt;code&gt;client.statuses.user_timeline.get()&lt;/code&gt; 这样的函数调用。这样的 Client 写起来很简单， 单个文件就可以搞定， 但对用户却不友好。譬如收藏评论这样简单的操作， 用户也要不断去翻 新浪微博 API 文档， 并手动拼接出正确的 API URL。&lt;/p&gt;
+&lt;p&gt;相比之下， 另一个微博 &lt;a href="https://github.com/wuyuntao/weibopy"&gt;Client&lt;/a&gt;， 只对 API 返回的实体做了简单的抽象，就已经极大提高 Client 的易用性。扫一眼下面的代码， 不看文档， 我也知道怎样用代码刷微博了。
+ Anyway， REST API 是给机器用的， REST Client 是给人用的。&lt;/p&gt;
+&lt;p&gt;e.g.&lt;/p&gt;
+&lt;div class="highlight snippet"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;# &lt;span class="nv"&gt;https&lt;/span&gt;:&lt;span class="o"&gt;//&lt;/span&gt;&lt;span class="nv"&gt;github&lt;/span&gt;.&lt;span class="nv"&gt;com&lt;/span&gt;&lt;span class="o"&gt;/&lt;/span&gt;&lt;span class="nv"&gt;wuyuntao&lt;/span&gt;&lt;span class="o"&gt;/&lt;/span&gt;&lt;span class="nv"&gt;weibopy&lt;/span&gt;
+&lt;span class="nv"&gt;class&lt;/span&gt; &lt;span class="nv"&gt;Comments&lt;/span&gt;&lt;span class="ss"&gt;(&lt;/span&gt;&lt;span class="nv"&gt;Model&lt;/span&gt;&lt;span class="ss"&gt;)&lt;/span&gt;:
+    &lt;span class="nv"&gt;def&lt;/span&gt; &lt;span class="nv"&gt;destroy&lt;/span&gt;&lt;span class="ss"&gt;(&lt;/span&gt;&lt;span class="nv"&gt;self&lt;/span&gt;&lt;span class="ss"&gt;)&lt;/span&gt;:
+        &lt;span class="k"&gt;return&lt;/span&gt; &lt;span class="nv"&gt;self&lt;/span&gt;.&lt;span class="nv"&gt;_api&lt;/span&gt;.&lt;span class="nv"&gt;destroy_status&lt;/span&gt;&lt;span class="ss"&gt;(&lt;/span&gt;&lt;span class="nv"&gt;self&lt;/span&gt;.&lt;span class="nv"&gt;id&lt;/span&gt;&lt;span class="ss"&gt;)&lt;/span&gt;
+
+    &lt;span class="nv"&gt;def&lt;/span&gt; &lt;span class="nv"&gt;retweet&lt;/span&gt;&lt;span class="ss"&gt;(&lt;/span&gt;&lt;span class="nv"&gt;self&lt;/span&gt;&lt;span class="ss"&gt;)&lt;/span&gt;:
+        &lt;span class="k"&gt;return&lt;/span&gt; &lt;span class="nv"&gt;self&lt;/span&gt;.&lt;span class="nv"&gt;_api&lt;/span&gt;.&lt;span class="nv"&gt;retweet&lt;/span&gt;&lt;span class="ss"&gt;(&lt;/span&gt;&lt;span class="nv"&gt;self&lt;/span&gt;.&lt;span class="nv"&gt;id&lt;/span&gt;&lt;span class="ss"&gt;)&lt;/span&gt;
+
+    &lt;span class="nv"&gt;def&lt;/span&gt; &lt;span class="nv"&gt;retweets&lt;/span&gt;&lt;span class="ss"&gt;(&lt;/span&gt;&lt;span class="nv"&gt;self&lt;/span&gt;&lt;span class="ss"&gt;)&lt;/span&gt;:
+        &lt;span class="k"&gt;return&lt;/span&gt; &lt;span class="nv"&gt;self&lt;/span&gt;.&lt;span class="nv"&gt;_api&lt;/span&gt;.&lt;span class="nv"&gt;retweets&lt;/span&gt;&lt;span class="ss"&gt;(&lt;/span&gt;&lt;span class="nv"&gt;self&lt;/span&gt;.&lt;span class="nv"&gt;id&lt;/span&gt;&lt;span class="ss"&gt;)&lt;/span&gt;
+
+    &lt;span class="nv"&gt;def&lt;/span&gt; &lt;span class="nv"&gt;favorite&lt;/span&gt;&lt;span class="ss"&gt;(&lt;/span&gt;&lt;span class="nv"&gt;self&lt;/span&gt;&lt;span class="ss"&gt;)&lt;/span&gt;:
+        &lt;span class="k"&gt;return&lt;/span&gt; &lt;span class="nv"&gt;self&lt;/span&gt;.&lt;span class="nv"&gt;_api&lt;/span&gt;.&lt;span class="nv"&gt;create_favorite&lt;/span&gt;&lt;span class="ss"&gt;(&lt;/span&gt;&lt;span class="nv"&gt;self&lt;/span&gt;.&lt;span class="nv"&gt;id&lt;/span&gt;&lt;span class="ss"&gt;)&lt;/span&gt;
+
+&lt;span class="nv"&gt;class&lt;/span&gt; &lt;span class="nv"&gt;User&lt;/span&gt;&lt;span class="ss"&gt;(&lt;/span&gt;&lt;span class="nv"&gt;Model&lt;/span&gt;&lt;span class="ss"&gt;)&lt;/span&gt;:
+
+    &lt;span class="nv"&gt;def&lt;/span&gt; &lt;span class="nv"&gt;timeline&lt;/span&gt;&lt;span class="ss"&gt;(&lt;/span&gt;&lt;span class="nv"&gt;self&lt;/span&gt;, &lt;span class="o"&gt;**&lt;/span&gt;&lt;span class="nv"&gt;kargs&lt;/span&gt;&lt;span class="ss"&gt;)&lt;/span&gt;:
+        &lt;span class="k"&gt;return&lt;/span&gt; &lt;span class="nv"&gt;self&lt;/span&gt;.&lt;span class="nv"&gt;_api&lt;/span&gt;.&lt;span class="nv"&gt;user_timeline&lt;/span&gt;&lt;span class="ss"&gt;(&lt;/span&gt;&lt;span class="nv"&gt;user_id&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="nv"&gt;self&lt;/span&gt;.&lt;span class="nv"&gt;id&lt;/span&gt;, &lt;span class="o"&gt;**&lt;/span&gt;&lt;span class="nv"&gt;kargs&lt;/span&gt;&lt;span class="ss"&gt;)&lt;/span&gt;
+
+    &lt;span class="nv"&gt;def&lt;/span&gt; &lt;span class="nv"&gt;friends&lt;/span&gt;&lt;span class="ss"&gt;(&lt;/span&gt;&lt;span class="nv"&gt;self&lt;/span&gt;, &lt;span class="o"&gt;**&lt;/span&gt;&lt;span class="nv"&gt;kargs&lt;/span&gt;&lt;span class="ss"&gt;)&lt;/span&gt;:
+        &lt;span class="k"&gt;return&lt;/span&gt; &lt;span class="nv"&gt;self&lt;/span&gt;.&lt;span class="nv"&gt;_api&lt;/span&gt;.&lt;span class="nv"&gt;friends&lt;/span&gt;&lt;span class="ss"&gt;(&lt;/span&gt;&lt;span class="nv"&gt;user_id&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="nv"&gt;self&lt;/span&gt;.&lt;span class="nv"&gt;id&lt;/span&gt;, &lt;span class="o"&gt;**&lt;/span&gt;&lt;span class="nv"&gt;kargs&lt;/span&gt;&lt;span class="ss"&gt;)&lt;/span&gt;
+
+    &lt;span class="nv"&gt;def&lt;/span&gt; &lt;span class="nv"&gt;followers&lt;/span&gt;&lt;span class="ss"&gt;(&lt;/span&gt;&lt;span class="nv"&gt;self&lt;/span&gt;, &lt;span class="o"&gt;**&lt;/span&gt;&lt;span class="nv"&gt;kargs&lt;/span&gt;&lt;span class="ss"&gt;)&lt;/span&gt;:
+        &lt;span class="k"&gt;return&lt;/span&gt; &lt;span class="nv"&gt;self&lt;/span&gt;.&lt;span class="nv"&gt;_api&lt;/span&gt;.&lt;span class="nv"&gt;followers&lt;/span&gt;&lt;span class="ss"&gt;(&lt;/span&gt;&lt;span class="nv"&gt;user_id&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="nv"&gt;self&lt;/span&gt;.&lt;span class="nv"&gt;id&lt;/span&gt;, &lt;span class="o"&gt;**&lt;/span&gt;&lt;span class="nv"&gt;kargs&lt;/span&gt;&lt;span class="ss"&gt;)&lt;/span&gt;
+
+    &lt;span class="nv"&gt;def&lt;/span&gt; &lt;span class="nv"&gt;follow&lt;/span&gt;&lt;span class="ss"&gt;(&lt;/span&gt;&lt;span class="nv"&gt;self&lt;/span&gt;&lt;span class="ss"&gt;)&lt;/span&gt;:
+        &lt;span class="nv"&gt;self&lt;/span&gt;.&lt;span class="nv"&gt;_api&lt;/span&gt;.&lt;span class="nv"&gt;create_friendship&lt;/span&gt;&lt;span class="ss"&gt;(&lt;/span&gt;&lt;span class="nv"&gt;user_id&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="nv"&gt;self&lt;/span&gt;.&lt;span class="nv"&gt;id&lt;/span&gt;&lt;span class="ss"&gt;)&lt;/span&gt;
+        &lt;span class="nv"&gt;self&lt;/span&gt;.&lt;span class="nv"&gt;following&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="nv"&gt;True&lt;/span&gt;
+
+    &lt;span class="nv"&gt;def&lt;/span&gt; &lt;span class="nv"&gt;unfollow&lt;/span&gt;&lt;span class="ss"&gt;(&lt;/span&gt;&lt;span class="nv"&gt;self&lt;/span&gt;&lt;span class="ss"&gt;)&lt;/span&gt;:
+        &lt;span class="nv"&gt;self&lt;/span&gt;.&lt;span class="nv"&gt;_api&lt;/span&gt;.&lt;span class="nv"&gt;destroy_friendship&lt;/span&gt;&lt;span class="ss"&gt;(&lt;/span&gt;&lt;span class="nv"&gt;user_id&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="nv"&gt;self&lt;/span&gt;.&lt;span class="nv"&gt;id&lt;/span&gt;&lt;span class="ss"&gt;)&lt;/span&gt;
+        &lt;span class="nv"&gt;self&lt;/span&gt;.&lt;span class="nv"&gt;following&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="nv"&gt;False&lt;/span&gt;
+
+    &lt;span class="nv"&gt;def&lt;/span&gt; &lt;span class="nv"&gt;lists_memberships&lt;/span&gt;&lt;span class="ss"&gt;(&lt;/span&gt;&lt;span class="nv"&gt;self&lt;/span&gt;, &lt;span class="o"&gt;*&lt;/span&gt;&lt;span class="nv"&gt;args&lt;/span&gt;, &lt;span class="o"&gt;**&lt;/span&gt;&lt;span class="nv"&gt;kargs&lt;/span&gt;&lt;span class="ss"&gt;)&lt;/span&gt;:
+        &lt;span class="k"&gt;return&lt;/span&gt; &lt;span class="nv"&gt;self&lt;/span&gt;.&lt;span class="nv"&gt;_api&lt;/span&gt;.&lt;span class="nv"&gt;lists_memberships&lt;/span&gt;&lt;span class="ss"&gt;(&lt;/span&gt;&lt;span class="nv"&gt;user&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="nv"&gt;self&lt;/span&gt;.&lt;span class="nv"&gt;screen_name&lt;/span&gt;, &lt;span class="o"&gt;*&lt;/span&gt;&lt;span class="nv"&gt;args&lt;/span&gt;, &lt;span class="o"&gt;**&lt;/span&gt;&lt;span class="nv"&gt;kargs&lt;/span&gt;&lt;span class="ss"&gt;)&lt;/span&gt;
+
+    &lt;span class="nv"&gt;def&lt;/span&gt; &lt;span class="nv"&gt;lists_subscriptions&lt;/span&gt;&lt;span class="ss"&gt;(&lt;/span&gt;&lt;span class="nv"&gt;self&lt;/span&gt;, &lt;span class="o"&gt;*&lt;/span&gt;&lt;span class="nv"&gt;args&lt;/span&gt;, &lt;span class="o"&gt;**&lt;/span&gt;&lt;span class="nv"&gt;kargs&lt;/span&gt;&lt;span class="ss"&gt;)&lt;/span&gt;:
+        &lt;span class="k"&gt;return&lt;/span&gt; &lt;span class="nv"&gt;self&lt;/span&gt;.&lt;span class="nv"&gt;_api&lt;/span&gt;.&lt;span class="nv"&gt;lists_subscriptions&lt;/span&gt;&lt;span class="ss"&gt;(&lt;/span&gt;&lt;span class="nv"&gt;user&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="nv"&gt;self&lt;/span&gt;.&lt;span class="nv"&gt;screen_name&lt;/span&gt;, &lt;span class="o"&gt;*&lt;/span&gt;&lt;span class="nv"&gt;args&lt;/span&gt;, &lt;span class="o"&gt;**&lt;/span&gt;&lt;span class="nv"&gt;kargs&lt;/span&gt;&lt;span class="ss"&gt;)&lt;/span&gt;
+
+    &lt;span class="nv"&gt;def&lt;/span&gt; &lt;span class="nv"&gt;lists&lt;/span&gt;&lt;span class="ss"&gt;(&lt;/span&gt;&lt;span class="nv"&gt;self&lt;/span&gt;, &lt;span class="o"&gt;*&lt;/span&gt;&lt;span class="nv"&gt;args&lt;/span&gt;, &lt;span class="o"&gt;**&lt;/span&gt;&lt;span class="nv"&gt;kargs&lt;/span&gt;&lt;span class="ss"&gt;)&lt;/span&gt;:
+        &lt;span class="k"&gt;return&lt;/span&gt; &lt;span class="nv"&gt;self&lt;/span&gt;.&lt;span class="nv"&gt;_api&lt;/span&gt;.&lt;span class="nv"&gt;lists&lt;/span&gt;&lt;span class="ss"&gt;(&lt;/span&gt;&lt;span class="nv"&gt;user&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="nv"&gt;self&lt;/span&gt;.&lt;span class="nv"&gt;screen_name&lt;/span&gt;, &lt;span class="o"&gt;*&lt;/span&gt;&lt;span class="nv"&gt;args&lt;/span&gt;, &lt;span class="o"&gt;**&lt;/span&gt;&lt;span class="nv"&gt;kargs&lt;/span&gt;&lt;span class="ss"&gt;)&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;h3&gt;没有充分利用缓存&lt;/h3&gt;
+&lt;p&gt;成熟的 REST 服务往往会利用缓存来提高响应速度。许多多 REST 服务（例如 github， heroku, 阿里云 OSS）使用 &lt;code&gt;If-Modified-Since&lt;/code&gt;(Last-Modified) 和 &lt;code&gt;If-None-Match&lt;/code&gt;(ETag) 这两个 HTTP 头来标示缓存信息。一个好的 REST Client 应当在请求时向 Server 端提供这些 HTTP 头。&lt;/p&gt;
+&lt;p&gt;e.g&lt;/p&gt;
+&lt;div class="highlight snippet"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;# &lt;span class="nv"&gt;https&lt;/span&gt;:&lt;span class="o"&gt;//&lt;/span&gt;&lt;span class="nv"&gt;github&lt;/span&gt;.&lt;span class="nv"&gt;com&lt;/span&gt;&lt;span class="o"&gt;/&lt;/span&gt;&lt;span class="nv"&gt;sigmavirus24&lt;/span&gt;&lt;span class="o"&gt;/&lt;/span&gt;&lt;span class="nv"&gt;github3&lt;/span&gt;.&lt;span class="nv"&gt;py&lt;/span&gt;
+&lt;span class="nv"&gt;def&lt;/span&gt; &lt;span class="nv"&gt;refresh&lt;/span&gt;&lt;span class="ss"&gt;(&lt;/span&gt;&lt;span class="nv"&gt;self&lt;/span&gt;, &lt;span class="nv"&gt;conditional&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="nv"&gt;False&lt;/span&gt;&lt;span class="ss"&gt;)&lt;/span&gt;:
+    &lt;span class="nv"&gt;headers&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; {}
+    &lt;span class="k"&gt;if&lt;/span&gt; &lt;span class="nv"&gt;conditional&lt;/span&gt;:
+        &lt;span class="k"&gt;if&lt;/span&gt; &lt;span class="nv"&gt;self&lt;/span&gt;.&lt;span class="nv"&gt;last_modified&lt;/span&gt;:
+            &lt;span class="nv"&gt;headers&lt;/span&gt;[&lt;span class="s1"&gt;&amp;#39;&lt;/span&gt;&lt;span class="s"&gt;If-Modified-Since&lt;/span&gt;&lt;span class="s1"&gt;&amp;#39;&lt;/span&gt;] &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="nv"&gt;self&lt;/span&gt;.&lt;span class="nv"&gt;last_modified&lt;/span&gt;
+        &lt;span class="nv"&gt;elif&lt;/span&gt; &lt;span class="nv"&gt;self&lt;/span&gt;.&lt;span class="nv"&gt;etag&lt;/span&gt;:
+            &lt;span class="nv"&gt;headers&lt;/span&gt;[&lt;span class="s1"&gt;&amp;#39;&lt;/span&gt;&lt;span class="s"&gt;If-None-Match&lt;/span&gt;&lt;span class="s1"&gt;&amp;#39;&lt;/span&gt;] &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="nv"&gt;self&lt;/span&gt;.&lt;span class="nv"&gt;etag&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;h3&gt;跨域问题&lt;/h3&gt;
+&lt;p&gt;出于安全考虑， 浏览器会限制脚本中发起的跨站请求。绕过这个限制的方法也不少，比如 iframe, JSONP, CORS... 其中&lt;a href="https://developer.mozilla.org/zh-CN/docs/Web/HTTP/Access_control_CORS"&gt;跨源资源共享&lt;/a&gt;（Cross-Origin Resource Sharing / CORS) 是比较主流的， 也是 W3C 推荐的一种做法。本文篇幅有限， 其细节可以参考前文所给的链接，接下来让我们专心黑 IE。
+其他浏览器都是在 &lt;code&gt;XMLHttpRequest&lt;/code&gt; 对象上实现了 CORS。 唯独微软在 IE8-IE9 里引入了一个新的对象 &lt;code&gt;XDomainRequest&lt;/code&gt;， 专门处理CORS 请求。 这还是个小坑， 前端可以很容易绕过。最要命的是在 IE10 以前，&lt;code&gt;XDomainRequest&lt;/code&gt; 只支持 GET 和 POST 方法, 而且无法自定义 HTTP Header。于是 PUT， DELETE 方法是不能用了， 要设置 &lt;code&gt;Content-type&lt;/code&gt; 为 &lt;code&gt;application/json&lt;/code&gt; 也不行了。当然解决办法是有的， 比如使用 &lt;a href="https://github.com/jpillora/xdomain"&gt;XDomain&lt;/a&gt;。但这些方法都需要对 Server 端做一定的更改，无法完全在 Client 端加以解决。&lt;/p&gt;
+&lt;p&gt;值得一提的是， Django REST Framework 为此原生提供了一种很简单的 &lt;a href="http://www.django-rest-framework.org/topics/browser-enhancements/"&gt;workaround&lt;/a&gt;。 只要设置了 &lt;code&gt;X-HTTP-Method-Override&lt;/code&gt; 头，DRF 就会将那些本来是 POST 的请求，当作指定的方法处理。&lt;/p&gt;
+&lt;p&gt;e.g.&lt;/p&gt;
+&lt;div class="highlight snippet"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="nx"&gt;$&lt;/span&gt;&lt;span class="p"&gt;.&lt;/span&gt;&lt;span class="nx"&gt;ajax&lt;/span&gt;&lt;span class="p"&gt;({&lt;/span&gt;
+    &lt;span class="nx"&gt;url&lt;/span&gt;&lt;span class="o"&gt;:&lt;/span&gt; &lt;span class="s1"&gt;&amp;#39;/myresource/&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;
+    &lt;span class="nx"&gt;method&lt;/span&gt;&lt;span class="o"&gt;:&lt;/span&gt; &lt;span class="s1"&gt;&amp;#39;POST&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;
+    &lt;span class="nx"&gt;headers&lt;/span&gt;&lt;span class="o"&gt;:&lt;/span&gt; &lt;span class="p"&gt;{&lt;/span&gt;&lt;span class="s1"&gt;&amp;#39;X-HTTP-Method-Override&amp;#39;&lt;/span&gt;&lt;span class="o"&gt;:&lt;/span&gt; &lt;span class="s1"&gt;&amp;#39;PATCH&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;},&lt;/span&gt;
+    &lt;span class="p"&gt;...&lt;/span&gt;
+&lt;span class="p"&gt;});&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;尽管跨域问题只存在浏览器端， 但所有的 Client 也会面临类似的问题： 一些企业内部网络由于代理，防火墙的限制， 无法使用某些特定的 HTTP 方法。 因此 REST Client 在这方面下点功夫还是很有必要。&lt;/p&gt;
+&lt;h2&gt;Finally&lt;/h2&gt;
+&lt;p&gt;在写 REST Client 时会遇到的那些痛点, 很多时候是无法光靠 Client 自身去解决的, 需要服务器端的配合。换个角度看的话，那么Server 端的实现可只能称之为失败。因此我建议那些负责 REST 服务端程序员也去亲自写一下对应 Client 端的代码。对于后端程序员来说， 这并不需要多少前端知识， 你完全可以使用和 Server 端相同的编程语言，我信心这会 带来不少启发。&lt;/p&gt;</summary><category term="rest"></category></entry><entry><title>用 Travis CI 定制多样化的 Python 测试环境</title><link href="https://wing2south.com/post/travisci-multi-python-test-env/" rel="alternate"></link><published>2014-11-13T20:06:00+08:00</published><updated>2014-11-13T20:06:00+08:00</updated><author><name>Leonardo Zhou</name></author><id>tag:wing2south.com,2014-11-13:post/travisci-multi-python-test-env/</id><summary type="html">&lt;p&gt;&lt;a href="https://travis-ci.org/"&gt;Travis CI&lt;/a&gt; 是一项面向 GitHub 用户的持续集成即测试服务。只要是在 GitHub 上开源的项目，经过简单配置， 便可以利用 Travis CI 来进行自动化测试。&lt;/p&gt;
+&lt;p&gt;做过 Python 开源项目开发的大概都曾被和特定 Python 版本相关的 bug 叮过。  现在比较主流的 Python 运行环境就有: Python 2.6, Python 2.7, Python 3.3 和 Python 3.4 这四种。 此外由于 CPython 有GIL 的限制,  近两年来，pypy 也得到了越来越多的关注。尽管目前 Python 3， pypy 在实际产品中还用得比较少， 但对 Python3 的支持已经成为大家在选择第三方库时需要考量的一个相当重要指标。&lt;/p&gt;
+&lt;p&gt;如果是做 Django 开发的话， 测试环境多样化的问题就更加严重了。现在大部分 Django 第三方库都会支持 Django 1.4 -1.7 这 4个版本。和上面提到的 4个 Python 版本组合起来，就有 16种之多( 由于 Django 1.5 以上才支持 Python3, 实际有效的组合会略少）。对于某些项目， 甚至要考虑不同数据库 （MySQL, PostgreSQL, SQLite) 的差异， 那么总的测试环境数又要 X3。&lt;/p&gt;
+&lt;p&gt;尽管通过 &lt;a href="https://github.com/yyuu/pyenv"&gt;pyenv&lt;/a&gt; 和 &lt;a href="http://tox.readthedocs.org/en/latest/"&gt;tox&lt;/a&gt; 这些工具,  在本地安装和测试多版本的 Python 的流程已经被简化了很多。但光是在十几个环境里把测试一一跑一遍就要花费不少时间。从而导致了我们在平时的开发过程中不会经常去运行这些测试。缺乏测试又会让我们无法尽早发现bug。像 unicode/string 相关 bug， 常常是牵一发而动全身， 后期修复的代价比较高。&lt;/p&gt;
+&lt;p&gt;Travis CI 使用 GitHub 项目根目录下的 &lt;code&gt;.travis.yml&lt;/code&gt; 作为其配置文件。从后缀名就可以看出， 其配置文件是 &lt;code&gt;YAML&lt;/code&gt; 格式的。&lt;/p&gt;
+&lt;p&gt;一个简单的例子：&lt;/p&gt;
+&lt;div class="highlight snippet"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="nt"&gt;language&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt; &lt;span class="l l-Scalar l-Scalar-Plain"&gt;python&lt;/span&gt;
+&lt;span class="nt"&gt;python&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt;
+&lt;span class="p p-Indicator"&gt;-&lt;/span&gt; &lt;span class="s"&gt;&amp;#39;2.7&amp;#39;&lt;/span&gt;
+&lt;span class="p p-Indicator"&gt;-&lt;/span&gt; &lt;span class="s"&gt;&amp;#39;2.6&amp;#39;&lt;/span&gt;
+&lt;span class="p p-Indicator"&gt;-&lt;/span&gt; &lt;span class="s"&gt;&amp;#39;3.3&amp;#39;&lt;/span&gt;
+&lt;span class="p p-Indicator"&gt;-&lt;/span&gt; &lt;span class="s"&gt;&amp;#39;3.4&amp;#39;&lt;/span&gt;
+&lt;span class="c1"&gt;# command to install dependencies&lt;/span&gt;
+&lt;span class="nt"&gt;install&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt; &lt;span class="s"&gt;&amp;quot;pip&lt;/span&gt;&lt;span class="nv"&gt; &lt;/span&gt;&lt;span class="s"&gt;install&lt;/span&gt;&lt;span class="nv"&gt; &lt;/span&gt;&lt;span class="s"&gt;-r&lt;/span&gt;&lt;span class="nv"&gt; &lt;/span&gt;&lt;span class="s"&gt;requirements.txt&amp;quot;&lt;/span&gt;
+&lt;span class="c1"&gt;# command to run tests&lt;/span&gt;
+&lt;span class="nt"&gt;script&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt; &lt;span class="l l-Scalar l-Scalar-Plain"&gt;py.test&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;上面的 &lt;code&gt;.travis.yml&lt;/code&gt;  会创建 Python 2.6 - Python 3.4  这 4 个 独立的 Python 测试环境。 在每个环境里，通过 &lt;code&gt;pip install -r requirements.txt&lt;/code&gt; 安装项目所依赖的 Python Package。 &lt;/p&gt;
+&lt;p&gt;&lt;code&gt;script&lt;/code&gt; 用于指定用来执行单元测试的命令。这里我们使用的是  &lt;code&gt;py.test&lt;/code&gt;， 根据个人喜好，你也可以选择 &lt;code&gt;nosetest&lt;/code&gt;, &lt;code&gt;make test&lt;/code&gt;, &lt;code&gt;python setup.py tetst&lt;/code&gt; ... 对于 Python 项目， Travis CI 会自动安装 &lt;code&gt;nose&lt;/code&gt;, &lt;code&gt;pytest&lt;/code&gt;, &lt;code&gt;mock&lt;/code&gt; 这几个常用的测试库。 &lt;/p&gt;
+&lt;p&gt;对于更加复杂的项目， 我们也可以指定多个 &lt;code&gt;install&lt;/code&gt;  命令。
+例如：&lt;/p&gt;
+&lt;div class="highlight snippet"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="nt"&gt;install&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt;
+&lt;span class="p p-Indicator"&gt;-&lt;/span&gt; &lt;span class="l l-Scalar l-Scalar-Plain"&gt;pip install django==$DJANGO_VERSION&lt;/span&gt;
+&lt;span class="p p-Indicator"&gt;-&lt;/span&gt; &lt;span class="l l-Scalar l-Scalar-Plain"&gt;pip install -r requirements.txt&lt;/span&gt;
+&lt;span class="p p-Indicator"&gt;-&lt;/span&gt; &lt;span class="l l-Scalar l-Scalar-Plain"&gt;pip install -e .&lt;/span&gt;
+&lt;span class="l l-Scalar l-Scalar-Plain"&gt;env： DJANGO_VERSION=1.7 SECRET_KEY=&amp;quot;XXXXXXX&amp;quot; FOO=&amp;quot;foo&amp;quot;&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;上面的配置除了安装 requirements.txt 所罗列的 Python Package 外， 还会以 &lt;code&gt;develop&lt;/code&gt; 模式 安装项目根目录下的 &lt;code&gt;setup.py&lt;/code&gt;， 并根据 &lt;code&gt;DJANGO_VERSION&lt;/code&gt; 这个环境变量，安装指定版本的 Django 。&lt;/p&gt;
+&lt;p&gt;如果， &lt;code&gt;env&lt;/code&gt; 指定了多组环境变量， Travis CI 会将 各个版本的 Python 和环境变量组 一一组合。 下面的配置就会生成  4X3， 共12个测试环境。&lt;/p&gt;
+&lt;div class="highlight snippet"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="nt"&gt;python&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt;
+&lt;span class="p p-Indicator"&gt;-&lt;/span&gt; &lt;span class="s"&gt;&amp;#39;2.7&amp;#39;&lt;/span&gt;
+&lt;span class="p p-Indicator"&gt;-&lt;/span&gt; &lt;span class="s"&gt;&amp;#39;2.6&amp;#39;&lt;/span&gt;
+&lt;span class="p p-Indicator"&gt;-&lt;/span&gt; &lt;span class="s"&gt;&amp;#39;3.3&amp;#39;&lt;/span&gt;
+&lt;span class="p p-Indicator"&gt;-&lt;/span&gt; &lt;span class="s"&gt;&amp;#39;3.4&amp;#39;&lt;/span&gt;
+&lt;span class="nt"&gt;install&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt;
+&lt;span class="p p-Indicator"&gt;-&lt;/span&gt; &lt;span class="l l-Scalar l-Scalar-Plain"&gt;pip install -r requirements.txt&lt;/span&gt;
+&lt;span class="p p-Indicator"&gt;-&lt;/span&gt; &lt;span class="l l-Scalar l-Scalar-Plain"&gt;pip install django==$DJANGO_VERSION&lt;/span&gt;
+&lt;span class="p p-Indicator"&gt;-&lt;/span&gt; &lt;span class="l l-Scalar l-Scalar-Plain"&gt;pip install -e .&lt;/span&gt;
+&lt;span class="nt"&gt;env&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt;
+ &lt;span class="p p-Indicator"&gt;-&lt;/span&gt; &lt;span class="l l-Scalar l-Scalar-Plain"&gt;DJANGO_VERSION=1.7&lt;/span&gt;
+ &lt;span class="p p-Indicator"&gt;-&lt;/span&gt; &lt;span class="l l-Scalar l-Scalar-Plain"&gt;DJANGO_VERSION=1.6&lt;/span&gt;
+ &lt;span class="p p-Indicator"&gt;-&lt;/span&gt; &lt;span class="l l-Scalar l-Scalar-Plain"&gt;DJANGO_VERSION=1.5&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;&lt;strong&gt;注&lt;/strong&gt;： 在 &lt;code&gt;env&lt;/code&gt; 列表里， 每一行代表一组环境变量。多个环境变量间用空格隔开。&lt;/p&gt;
+&lt;p&gt;当我们想在每个测试环境中都设置一些环境变量时， 我们就要把 &lt;code&gt;env&lt;/code&gt; 列表显式地拆分成 &lt;code&gt;matrix&lt;/code&gt; 和 &lt;code&gt;global&lt;/code&gt; 两个子列表。 &lt;code&gt;global&lt;/code&gt; 子列表 里的环境变量不参与测试环境的组合。
+ 例：&lt;/p&gt;
+&lt;div class="highlight snippet"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="nt"&gt;env&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt;
+  &lt;span class="nt"&gt;matrix&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt;
+  &lt;span class="p p-Indicator"&gt;-&lt;/span&gt; &lt;span class="l l-Scalar l-Scalar-Plain"&gt;DJANGO_VERSION=1.7&lt;/span&gt;
+  &lt;span class="p p-Indicator"&gt;-&lt;/span&gt; &lt;span class="l l-Scalar l-Scalar-Plain"&gt;DJANGO_VERSION=1.6&lt;/span&gt;
+  &lt;span class="p p-Indicator"&gt;-&lt;/span&gt; &lt;span class="l l-Scalar l-Scalar-Plain"&gt;DJANGO_VERSION=1.5&lt;/span&gt;
+  &lt;span class="nt"&gt;global&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt;
+  &lt;span class="p p-Indicator"&gt;-&lt;/span&gt; &lt;span class="l l-Scalar l-Scalar-Plain"&gt;SECRET_KEY=&amp;quot;XXXXXXX&amp;quot;&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;有时， 难免会遇到一些无效的测试环境组合， 比如 Django 1.7 就不支持 Python 2.6。 这种情况下， 可以用 &lt;code&gt;matrix.exclude&lt;/code&gt; 来排除某些特殊的组合：&lt;/p&gt;
+&lt;div class="highlight snippet"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="nt"&gt;matrix&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt;
+  &lt;span class="nt"&gt;exclude&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt;
+  &lt;span class="p p-Indicator"&gt;-&lt;/span&gt; &lt;span class="nt"&gt;python&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt; &lt;span class="s"&gt;&amp;#39;2.6&amp;#39;&lt;/span&gt;
+    &lt;span class="nt"&gt;env&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt; &lt;span class="l l-Scalar l-Scalar-Plain"&gt;DJANGO_VERSION=1.7&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;总的来说，&lt;code&gt;.travis.yml&lt;/code&gt; 的配置还是简明又不失灵活的， 用的也是标准的 &lt;code&gt;YAML&lt;/code&gt; 语法。如果对 &lt;code&gt;YAML&lt;/code&gt; 不熟， 建议上手Travis CI前，可以先找一份简明的 &lt;code&gt;YAML&lt;/code&gt; 语法说明学习一下， 会起到事半功倍的效果。如果你的 &lt;code&gt;.travis.yml&lt;/code&gt; 存在语法错误，可以用 &lt;a href="http://lint.travis-ci.org/"&gt;Travis WebLint&lt;/a&gt; 来作调试和语法检查。&lt;/p&gt;
+&lt;p&gt;最后 ， 附上我在 &lt;a href="https://github.com/glasslion/django-qiniu-storage"&gt;django-qiniu-storage&lt;/a&gt; 项目中所使用 &lt;code&gt;.travis.yml&lt;/code&gt; 以资参考。&lt;/p&gt;
+&lt;div class="highlight snippet"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="nt"&gt;language&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt; &lt;span class="l l-Scalar l-Scalar-Plain"&gt;python&lt;/span&gt;
+&lt;span class="nt"&gt;python&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt;
+&lt;span class="p p-Indicator"&gt;-&lt;/span&gt; &lt;span class="s"&gt;&amp;#39;2.7&amp;#39;&lt;/span&gt;
+&lt;span class="p p-Indicator"&gt;-&lt;/span&gt; &lt;span class="s"&gt;&amp;#39;2.6&amp;#39;&lt;/span&gt;
+&lt;span class="p p-Indicator"&gt;-&lt;/span&gt; &lt;span class="s"&gt;&amp;#39;3.3&amp;#39;&lt;/span&gt;
+&lt;span class="p p-Indicator"&gt;-&lt;/span&gt; &lt;span class="s"&gt;&amp;#39;3.4&amp;#39;&lt;/span&gt;
+&lt;span class="nt"&gt;install&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt;
+&lt;span class="p p-Indicator"&gt;-&lt;/span&gt; &lt;span class="l l-Scalar l-Scalar-Plain"&gt;pip install -r requirements.txt&lt;/span&gt;
+&lt;span class="p p-Indicator"&gt;-&lt;/span&gt; &lt;span class="l l-Scalar l-Scalar-Plain"&gt;pip install django==$DJANGO_VERSION&lt;/span&gt;
+&lt;span class="p p-Indicator"&gt;-&lt;/span&gt; &lt;span class="l l-Scalar l-Scalar-Plain"&gt;pip install -e .&lt;/span&gt;
+&lt;span class="nt"&gt;script&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt; &lt;span class="l l-Scalar l-Scalar-Plain"&gt;py.test tests/test_storage.py&lt;/span&gt;
+&lt;span class="nt"&gt;env&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt;
+  &lt;span class="nt"&gt;matrix&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt;
+  &lt;span class="p p-Indicator"&gt;-&lt;/span&gt; &lt;span class="l l-Scalar l-Scalar-Plain"&gt;DJANGO_VERSION=1.7&lt;/span&gt;
+  &lt;span class="p p-Indicator"&gt;-&lt;/span&gt; &lt;span class="l l-Scalar l-Scalar-Plain"&gt;DJANGO_VERSION=1.6&lt;/span&gt;
+  &lt;span class="p p-Indicator"&gt;-&lt;/span&gt; &lt;span class="l l-Scalar l-Scalar-Plain"&gt;DJANGO_VERSION=1.5&lt;/span&gt;
+  &lt;span class="nt"&gt;global&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt;
+  &lt;span class="p p-Indicator"&gt;-&lt;/span&gt; &lt;span class="l l-Scalar l-Scalar-Plain"&gt;USING_TRAVIS=YES&lt;/span&gt;
+  &lt;span class="p p-Indicator"&gt;-&lt;/span&gt; &lt;span class="l l-Scalar l-Scalar-Plain"&gt;QINIU_BUCKET_NAME=django-qiniu-storage&lt;/span&gt;
+  &lt;span class="p p-Indicator"&gt;-&lt;/span&gt; &lt;span class="l l-Scalar l-Scalar-Plain"&gt;QINIU_BUCKET_DOMAIN=django-qiniu-storage.qiniudn.com&lt;/span&gt;
+  &lt;span class="p p-Indicator"&gt;-&lt;/span&gt; &lt;span class="nt"&gt;secure&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt; &lt;span class="l l-Scalar l-Scalar-Plain"&gt;QVYe9vITrCQw924X7h0vYfHwSDGs6QTaHitM2M31hVkYdBWnYMQZcyW1b5DUcXIOot/Z9+1av77tHgh2nXPA34uR7OIzO+LTtmByEE4fOQwJPDkWvJmF63z6B3eRwH20RPg7sBhzQqEK8KPApTiVjRxw5qsf8yp3+V5aozrKAOg=&lt;/span&gt;
+&lt;span class="nt"&gt;matrix&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt;
+  &lt;span class="nt"&gt;exclude&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt;
+  &lt;span class="p p-Indicator"&gt;-&lt;/span&gt; &lt;span class="nt"&gt;python&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt; &lt;span class="s"&gt;&amp;#39;2.6&amp;#39;&lt;/span&gt;
+    &lt;span class="nt"&gt;env&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt; &lt;span class="l l-Scalar l-Scalar-Plain"&gt;DJANGO_VERSION=1.7&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;</summary></entry><entry><title>闲话 Django Raw SQL</title><link href="https://wing2south.com/post/django-raw-sql/" rel="alternate"></link><published>2014-09-17T21:33:00+08:00</published><updated>2014-09-17T21:33:00+08:00</updated><author><name>Leonardo Zhou</name></author><id>tag:wing2south.com,2014-09-17:post/django-raw-sql/</id><summary type="html">&lt;p&gt;在 Web 开发中，是否使用和怎样使用 ORM 一直是比较容易引起争议的话题。 在 Django 社区里， 相关的讨论也有很多。 一方面， Django 自带的 ORM 十分简明易学， 处理起简单的查询来得心应手， 相比与 Raw SQL，代码的可读性好很多。另一方面， 面对较为复杂的查询，受限于其表达能力，Django ORM 写起来就有点力不从心了。 即使最终能用 ORM 语句搞定， 代码的可读性可能还不及 Raw SQL， 也比较容易出现性能问题。&lt;/p&gt;
+&lt;p&gt;Raw SQL or not raw SQL， that is the question。&lt;/p&gt;
+&lt;p&gt;题外话：
+尽管，本文的主旨是想探讨下 Django 里 raw SQL 的应用。但笔者仍然强烈建议在使用 raw SQL 之前， 应尽量尝试一些常规的 ORM 手段。&lt;code&gt;select_related()&lt;/code&gt; 和 &lt;code&gt;prefetch_related()&lt;/code&gt; 往往可以大幅减少 SQL 查询的数量。一些性能问题往往可通过 cache 缓解。 &lt;a href="https://github.com/django-debug-toolbar/django-debug-toolbar/"&gt;django-debug-toolbar&lt;/a&gt; 和 &lt;a href="https://github.com/dcramer/django-devserver"&gt;django-devserver&lt;/a&gt; 对找出存在性能问题的 ORM 查询很有帮助。 Django 官方文档中的 这篇 &lt;a href="https://docs.djangoproject.com/en/dev/topics/db/optimization/"&gt;Database access optimization&lt;/a&gt; 也是份不错的参考资料。&lt;/p&gt;
+&lt;h2&gt;Manager.raw&lt;/h2&gt;
+&lt;p&gt;Django 的官方文档 &lt;a href="https://docs.djangoproject.com/en/dev/topics/db/sql/"&gt;Performing raw SQL queries&lt;/a&gt; 主要推荐使用 &lt;code&gt;Manager.raw(raw_query, params=None, translations=None)&lt;/code&gt;  来执行 raw SQL。 而且 &lt;code&gt;Manager.raw&lt;/code&gt; 这个API 并不是单纯执行 SQL 语句那么简单， 它还提供了不少很有用的功能。&lt;/p&gt;
+&lt;p&gt;&lt;code&gt;Manager.raw&lt;/code&gt;  依然能抵御 SQL 注入攻击。对于接受参数的 SQL 语句，我们不应该手动去填充 SQL 字符串， 而是应该在 SQL 语句里加上 &lt;code&gt;%s&lt;/code&gt;, &lt;code&gt;%(key)s&lt;/code&gt;之类的占位符， 然后把实际的值传给 &lt;code&gt;params&lt;/code&gt; 参数：&lt;/p&gt;
+&lt;div class="highlight snippet"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="n"&gt;lname&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="s1"&gt;&amp;#39;Doe&amp;#39;&lt;/span&gt;
+&lt;span class="c1"&gt;# Wrong:&lt;/span&gt;
+&lt;span class="n"&gt;Person&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;objects&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;raw&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="s1"&gt;&amp;#39;SELECT * FROM myapp_person WHERE last_name = &lt;/span&gt;&lt;span class="si"&gt;%s&lt;/span&gt;&lt;span class="s1"&gt;&amp;#39;&lt;/span&gt; &lt;span class="o"&gt;%&lt;/span&gt; &lt;span class="n"&gt;lname&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+
+&lt;span class="c1"&gt;# Right：&lt;/span&gt;
+&lt;span class="n"&gt;Person&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;objects&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;raw&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="s1"&gt;&amp;#39;SELECT * FROM myapp_person WHERE last_name = &lt;/span&gt;&lt;span class="si"&gt;%s&lt;/span&gt;&lt;span class="s1"&gt;&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="p"&gt;[&lt;/span&gt;&lt;span class="n"&gt;lname&lt;/span&gt;&lt;span class="p"&gt;])&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;通过 &lt;code&gt;Manager.raw&lt;/code&gt; ， 我们还可以给 Model 加上原来数据库表结构里不存在的字段：&lt;/p&gt;
+&lt;div class="highlight snippet"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="n"&gt;people&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;Person&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;objects&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;raw&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="s1"&gt;&amp;#39;SELECT *, age(birth_date) AS age FROM myapp_person&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+&lt;span class="k"&gt;for&lt;/span&gt; &lt;span class="n"&gt;p&lt;/span&gt; &lt;span class="ow"&gt;in&lt;/span&gt; &lt;span class="n"&gt;people&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt;
+    &lt;span class="k"&gt;print&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="s2"&gt;&amp;quot;&lt;/span&gt;&lt;span class="si"&gt;%s&lt;/span&gt;&lt;span class="s2"&gt; is &lt;/span&gt;&lt;span class="si"&gt;%s&lt;/span&gt;&lt;span class="s2"&gt;.&amp;quot;&lt;/span&gt; &lt;span class="o"&gt;%&lt;/span&gt; &lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;p&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;first_name&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;p&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;age&lt;/span&gt;&lt;span class="p"&gt;))&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;raw SQL 可以只包含 Model 的部分字段。 当访问那些 raw SQL 没有覆盖到的字段时，Django 会自动触发一条新的 SQL， 去查询对应字段的值：&lt;/p&gt;
+&lt;div class="highlight snippet"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="k"&gt;for&lt;/span&gt; &lt;span class="nv"&gt;p&lt;/span&gt; &lt;span class="nv"&gt;in&lt;/span&gt; &lt;span class="nv"&gt;Person&lt;/span&gt;.&lt;span class="nv"&gt;objects&lt;/span&gt;.&lt;span class="nv"&gt;raw&lt;/span&gt;&lt;span class="ss"&gt;(&lt;/span&gt;&lt;span class="s1"&gt;&amp;#39;&lt;/span&gt;&lt;span class="s"&gt;SELECT id, first_name FROM myapp_person&lt;/span&gt;&lt;span class="s1"&gt;&amp;#39;&lt;/span&gt;&lt;span class="ss"&gt;)&lt;/span&gt;:
+    &lt;span class="nv"&gt;print&lt;/span&gt;&lt;span class="ss"&gt;(&lt;/span&gt;&lt;span class="nv"&gt;p&lt;/span&gt;.&lt;span class="nv"&gt;first_name&lt;/span&gt;, # &lt;span class="nv"&gt;This&lt;/span&gt; &lt;span class="nv"&gt;will&lt;/span&gt; &lt;span class="nv"&gt;be&lt;/span&gt; &lt;span class="nv"&gt;retrieved&lt;/span&gt; &lt;span class="nv"&gt;by&lt;/span&gt; &lt;span class="nv"&gt;the&lt;/span&gt; &lt;span class="nv"&gt;original&lt;/span&gt; &lt;span class="nv"&gt;query&lt;/span&gt;
+        &lt;span class="nv"&gt;p&lt;/span&gt;.&lt;span class="nv"&gt;last_name&lt;/span&gt;&lt;span class="ss"&gt;)&lt;/span&gt; # &lt;span class="nv"&gt;This&lt;/span&gt; &lt;span class="nv"&gt;will&lt;/span&gt; &lt;span class="nv"&gt;be&lt;/span&gt; &lt;span class="nv"&gt;retrieved&lt;/span&gt; &lt;span class="nv"&gt;on&lt;/span&gt; &lt;span class="nv"&gt;demand&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;&lt;code&gt;Manager.raw&lt;/code&gt; 虽然很强大， 然而它返回的是一个 &lt;code&gt;RawQuerySet&lt;/code&gt; 。 不同与于正常的 &lt;code&gt;QuerySet&lt;/code&gt;  ， 我们不能在 &lt;code&gt;RawQuerySet&lt;/code&gt; 上执行 &lt;code&gt;filter&lt;/code&gt; 和 &lt;code&gt;order_by&lt;/code&gt; 等常见操作。 &lt;code&gt;RawQuerySet&lt;/code&gt; 仍然然支持 Python 的 index 和 slice 操作(&lt;code&gt;query_set[0]&lt;/code&gt;, &lt;code&gt;query_set[0:5]&lt;/code&gt;)，但不像&lt;code&gt;QuerySet&lt;/code&gt; 是在 数据库层面通过 &lt;code&gt;LIMIT&lt;/code&gt; 语句完成， &lt;code&gt;RawQuerySet&lt;/code&gt; 是将数据集全部取出后，在 Python 代码里做的 index 和 slice, 其实现比较低效。&lt;/p&gt;
+&lt;p&gt;这些缺陷导致了 raw SQL 很难在不同场合复用。 所以，总体上 &lt;code&gt;Manager.raw&lt;/code&gt; 给我的感觉是： 食之无味，弃之可惜。&lt;/p&gt;
+&lt;h2&gt;Model ↔ 视图&lt;/h2&gt;
+&lt;p&gt;实际上， Django Models 不仅可以映射成数据库里的 Table， 也可以映射成View(视图)。&lt;/p&gt;
+&lt;p&gt;以 MySQL 官方样例数据库 &lt;a href="http://dev.mysql.com/doc/sakila/en/index.html"&gt;Sakila&lt;/a&gt; 里的 &lt;code&gt;sales_by_film_category&lt;/code&gt;  视图为例：&lt;/p&gt;
+&lt;div class="highlight snippet"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="o"&gt;#&lt;/span&gt; &lt;span class="k"&gt;View&lt;/span&gt; &lt;span class="n"&gt;sales_by_film_category&lt;/span&gt;
+&lt;span class="k"&gt;CREATE&lt;/span&gt; &lt;span class="k"&gt;VIEW&lt;/span&gt; &lt;span class="n"&gt;sales_by_film_category&lt;/span&gt; &lt;span class="k"&gt;AS&lt;/span&gt;
+&lt;span class="k"&gt;SELECT&lt;/span&gt; &lt;span class="k"&gt;c&lt;/span&gt;&lt;span class="p"&gt;.&lt;/span&gt;&lt;span class="n"&gt;name&lt;/span&gt; &lt;span class="k"&gt;AS&lt;/span&gt; &lt;span class="n"&gt;category&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;
+    &lt;span class="k"&gt;sum&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;p&lt;/span&gt;&lt;span class="p"&gt;.&lt;/span&gt;&lt;span class="n"&gt;amount&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt; &lt;span class="k"&gt;AS&lt;/span&gt; &lt;span class="n"&gt;total_sales&lt;/span&gt;
+   &lt;span class="k"&gt;FROM&lt;/span&gt; &lt;span class="n"&gt;payment&lt;/span&gt; &lt;span class="n"&gt;p&lt;/span&gt;
+     &lt;span class="k"&gt;JOIN&lt;/span&gt; &lt;span class="n"&gt;rental&lt;/span&gt; &lt;span class="n"&gt;r&lt;/span&gt; &lt;span class="k"&gt;ON&lt;/span&gt; &lt;span class="n"&gt;p&lt;/span&gt;&lt;span class="p"&gt;.&lt;/span&gt;&lt;span class="n"&gt;rental_id&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;r&lt;/span&gt;&lt;span class="p"&gt;.&lt;/span&gt;&lt;span class="n"&gt;rental_id&lt;/span&gt;
+     &lt;span class="k"&gt;JOIN&lt;/span&gt; &lt;span class="n"&gt;inventory&lt;/span&gt; &lt;span class="n"&gt;i&lt;/span&gt; &lt;span class="k"&gt;ON&lt;/span&gt; &lt;span class="n"&gt;r&lt;/span&gt;&lt;span class="p"&gt;.&lt;/span&gt;&lt;span class="n"&gt;inventory_id&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;i&lt;/span&gt;&lt;span class="p"&gt;.&lt;/span&gt;&lt;span class="n"&gt;inventory_id&lt;/span&gt;
+     &lt;span class="k"&gt;JOIN&lt;/span&gt; &lt;span class="n"&gt;film&lt;/span&gt; &lt;span class="n"&gt;f&lt;/span&gt; &lt;span class="k"&gt;ON&lt;/span&gt; &lt;span class="n"&gt;i&lt;/span&gt;&lt;span class="p"&gt;.&lt;/span&gt;&lt;span class="n"&gt;film_id&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;f&lt;/span&gt;&lt;span class="p"&gt;.&lt;/span&gt;&lt;span class="n"&gt;film_id&lt;/span&gt;
+     &lt;span class="k"&gt;JOIN&lt;/span&gt; &lt;span class="n"&gt;film_category&lt;/span&gt; &lt;span class="n"&gt;fc&lt;/span&gt; &lt;span class="k"&gt;ON&lt;/span&gt; &lt;span class="n"&gt;f&lt;/span&gt;&lt;span class="p"&gt;.&lt;/span&gt;&lt;span class="n"&gt;film_id&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;fc&lt;/span&gt;&lt;span class="p"&gt;.&lt;/span&gt;&lt;span class="n"&gt;film_id&lt;/span&gt;
+     &lt;span class="k"&gt;JOIN&lt;/span&gt; &lt;span class="n"&gt;category&lt;/span&gt; &lt;span class="k"&gt;c&lt;/span&gt; &lt;span class="k"&gt;ON&lt;/span&gt; &lt;span class="n"&gt;fc&lt;/span&gt;&lt;span class="p"&gt;.&lt;/span&gt;&lt;span class="n"&gt;category_id&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="k"&gt;c&lt;/span&gt;&lt;span class="p"&gt;.&lt;/span&gt;&lt;span class="n"&gt;category_id&lt;/span&gt;
+  &lt;span class="k"&gt;GROUP&lt;/span&gt; &lt;span class="k"&gt;BY&lt;/span&gt; &lt;span class="k"&gt;c&lt;/span&gt;&lt;span class="p"&gt;.&lt;/span&gt;&lt;span class="n"&gt;name&lt;/span&gt;
+  &lt;span class="k"&gt;ORDER&lt;/span&gt; &lt;span class="k"&gt;BY&lt;/span&gt; &lt;span class="k"&gt;sum&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;p&lt;/span&gt;&lt;span class="p"&gt;.&lt;/span&gt;&lt;span class="n"&gt;amount&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt; &lt;span class="k"&gt;DESC&lt;/span&gt;&lt;span class="p"&gt;;&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;注： Sakila 数据库里各表的结构和关系可以参考这篇&lt;a href="http://dev.mysql.com/doc/sakila/en/sakila-structure.html"&gt;文档&lt;/a&gt;，本文限于篇幅，就不详细解释了。&lt;/p&gt;
+&lt;p&gt;这样一个数据库视图， 通过 Django &lt;code&gt;inspectdb&lt;/code&gt;  command 解析后，就可以得到如下的 Django  Model :&lt;/p&gt;
+&lt;div class="highlight snippet"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="k"&gt;class&lt;/span&gt; &lt;span class="nc"&gt;SalesByFilmCategory&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;Model&lt;/span&gt;&lt;span class="p"&gt;):&lt;/span&gt;
+    &lt;span class="n"&gt;category&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;models&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;IntegerField&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;primary_key&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="bp"&gt;True&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+    &lt;span class="n"&gt;total_sales&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;models&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;IntegerField&lt;/span&gt;&lt;span class="p"&gt;()&lt;/span&gt;
+
+    &lt;span class="k"&gt;class&lt;/span&gt; &lt;span class="nc"&gt;Meta&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt;
+        &lt;span class="n"&gt;managed&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="bp"&gt;False&lt;/span&gt;
+        &lt;span class="n"&gt;db_table&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="s1"&gt;&amp;#39;sales_by_film_category&amp;#39;&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;这个 Model 除了是只读（不可写）之外，相比于一般的 Model 并无二致。
+由于 Manager 返回的是普通的 &lt;code&gt;QuerySet&lt;/code&gt;,  我们可以链式地调用 &lt;code&gt;filter&lt;/code&gt;， &lt;code&gt;order_by&lt;/code&gt; 等操作。&lt;/p&gt;
+&lt;p&gt;e.g:&lt;/p&gt;
+&lt;div class="highlight snippet"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="n"&gt;SalesByFilmCategory&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;objects&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;filter&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;category__in&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="n"&gt;xxx&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;filter&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;total_sales__gt&lt;/span&gt;&lt;span class="o"&gt;==&lt;/span&gt;&lt;span class="n"&gt;xxxxx&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;order_by&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="s1"&gt;&amp;#39;total_sales&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;相比于 View(此处是指MVC 里的View，而非 DB 的View) 和 Template， Model 往往更加容易和第三方应用进行集成。譬如， 通过 django admin 的 ModelAdmin，我们只需几行代码就可以给上面的 的视图加上一个漂亮的查询报表界面（尽管是只读的）。类似的，通过 &lt;a href="http://www.django-rest-framework.org/"&gt;Django REST framework&lt;/a&gt; 的 &lt;code&gt;ListModelMixin&lt;/code&gt;， &lt;code&gt;RetrieveModelMixin&lt;/code&gt;, 给 视图加上一个只读的 REST API 也非常简单。 Django 社区会推崇 "Fat Models, Helper Modules, Thin Views, Stupid Templates." 的设计理念的道理正在于此。&lt;/p&gt;
+&lt;p&gt;我们还可以通过自定义 Model 的 Manager， Meta Class 来进一步定制 ORM，以达到在多个地方重用同一个 Model (View) 的目的。&lt;/p&gt;
+&lt;h2&gt;MATERIALIZED VIEWS&lt;/h2&gt;
+&lt;p&gt;对 View 的查询， 从本质上来说和一般的表查询并没有什么不同， 因此也不会有性能上的提升。很多情况下，正是因为ORM 生成的查询过于复杂，缓慢， 我们才会转投 raw SQL。 尽管 raw SQL 给予了我们在最大程度上优化 SQL 查询自由， 但有时候优化效果还是不能尽如人意。 如果对于查询结果的实时性要求不高的话，将耗时查询的结果 cache 住， 会是更合理的解决方案。&lt;/p&gt;
+&lt;p&gt;Django 自带的 &lt;a href="https://docs.djangoproject.com/en/dev/topics/cache/"&gt;Cache 框架&lt;/a&gt; 设计十分优秀, 扩展性也很好，这里不再赘述。 其实， 除了传统的 cache 技术外，在数据库层面也是有文章可做的。
+ PostgreSQL 9.3 添加了对 materialised views 的支持。Materialised View 是一种特殊的视图。不同与一般的视图， Materialised View 会将第一次查询所得到结果会被缓存到磁盘。再次查询时， Materialised View 将直接返回缓存后的数据， 速度自然会很快。&lt;/p&gt;
+&lt;p&gt;到目前为止，PostgreSQL 的materialised views 还无法像 Oracle 那样做到自动更新 (&lt;code&gt;auto-refreshed&lt;/code&gt;)。所以要通过 cron 或 celery 之类的工具 去定时刷新 (&lt;code&gt;REFRESH MATERIALIZED VIEW name&lt;/code&gt; )。传统的 cache 解决方案( memcached, redis) 支持对每个 key 设定不同的 timeout，相比之下， materialised views 在这方面不够灵活， 我们无法对 行(Row) 级数据更新。但 materialised views 也有自己的一些优势： &lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;Materialised Views 被配置好后， 对最终用户而言， 他们就是普通的 Django Model， 不需要在代码里对 cache 是否存在/是否需要更新做额外的处理。&lt;/li&gt;
+&lt;li&gt;memcached/redis 比较适合用来缓存单个 Model 对象， 但对于包含多个对象的 QuerySet， 其处理能力就比较弱了， 无法实现 Django Model.filter 之类的操作。 当应用程序代码里有多处使用到相似的 QuerySet， 每个QuerySet有所不同，但彼此又存在一定的交集时， cache 就无法得到有效利用。而 Materialised Views 就可以把这些 QuerySet 的合集缓存起来，每个 View 就是一个普通的 Django Model。各个 QuerySet 就只是在 Model 上调用不同的 filtet 方法而已。 PostgreSQL 支持在 Materialised Views 上建立索引， 查询速度也不会成为瓶颈。&lt;/li&gt;
+&lt;/ul&gt;</summary></entry><entry><title>devpi —— 架设私有 pypi 的最佳选择</title><link href="https://wing2south.com/post/devpi-best-private-pypi-server/" rel="alternate"></link><published>2014-05-03T22:31:00+08:00</published><updated>2014-05-03T22:31:00+08:00</updated><author><name>Leonardo Zhou</name></author><id>tag:wing2south.com,2014-05-03:post/devpi-best-private-pypi-server/</id><summary type="html">&lt;h2&gt;引言&lt;/h2&gt;
+&lt;p&gt;&lt;a href="https://pypi.python.org/pypi"&gt;PyPI&lt;/a&gt; 可以说是 Python 程序员几乎每天都要用到的工具 （当然由于众所周知的原因， 在国内使用&lt;a href="http://pypi.douban.com/simple/"&gt;豆瓣&lt;/a&gt;，&lt;a href="http://mirrors.aliyun.com/pypi/simple/"&gt;阿里云&lt;/a&gt; 等公司/组织提供的 PyPI 镜像会更加快捷，稳定）。但是在每个公司内部都会有一些的闭源的，私有的 Python Package 。 为了让这些私有的 Python Package 的安装流程能和 PyPI 一致， 架设一个私有的 PyPI 就很有必要了。&lt;/p&gt;
+&lt;h2&gt;寻寻觅觅&lt;/h2&gt;
+&lt;p&gt;目前，在各大搜索引擎上，无论是去搜索 “how to build a private pypi” 还是 “怎样搭建私有的pypi”，都能找到大量的解决方法和工具。 其中比较常见的 "类 PyPI Server" 就有： &lt;a href="https://github.com/benliles/djangopypi"&gt;DjangoPyPI&lt;/a&gt;， &lt;a href="https://github.com/ask/chishop"&gt;chishop&lt;/a&gt;， &lt;a href="https://github.com/schmir/pypiserver"&gt;pypiserver&lt;/a&gt;， &lt;a href="https://svn.python.org/packages/trunk/pypi/"&gt;Cheese Shop&lt;/a&gt;， &lt;a href="https://github.com/mvantellingen/localshop"&gt;localshop&lt;/a&gt;, &lt;a href="https://pypi.python.org/pypi/mypypi"&gt;mypypi&lt;/a&gt;, &lt;a href="https://bitbucket.org/r1chardj0n3s/proxypypi"&gt;proxypypi&lt;/a&gt;,  &lt;a href="https://github.com/tzulberti/Flask-PyPi-Proxy"&gt;Flask-PyPi-Proxy&lt;/a&gt; ... 就算不是你“选择困难症患者”, 面对如此众多的选择， 心里恐怕也要发毛了。&lt;/p&gt;
+&lt;p&gt;其实在搭建私有 pypi 这个问题上，Python 官方是有一个推荐工具的： &lt;a href="http://doc.devpi.net/"&gt;devpi&lt;/a&gt;。我在试用过上述工具后， 也觉得无论是在功能上，还是代码质量上 devpi 都遥遥领先于其他候选工具。可惜的是，由于devpi 是 一个在2013 年才起步的新项目， 目前 Python 中文圈里还没有人对 devpi 做过详细的介绍， 希望本文能起到个抛砖引玉的作用， 让更多 Pythonista 知道这个工具。&lt;/p&gt;
+&lt;h2&gt;为什么选择 devpi ?&lt;/h2&gt;
+&lt;p&gt;我以表格的形式对做了常见的 PyPI Server 做了一个对比，总结：&lt;/p&gt;
+&lt;table&gt;
+&lt;thead&gt;
+&lt;tr&gt;
+&lt;th&gt;PyPI Server&lt;/th&gt;
+&lt;th&gt;PyPI代理镜像&lt;/th&gt;
+&lt;th&gt;本地缓存&lt;/th&gt;
+&lt;th&gt;单元测试&lt;/th&gt;
+&lt;th&gt;系统测试&lt;/th&gt;
+&lt;th&gt;搜索&lt;/th&gt;
+&lt;th&gt;项目最后更新时间&lt;/th&gt;
+&lt;/tr&gt;
+&lt;/thead&gt;
+&lt;tbody&gt;
+&lt;tr&gt;
+&lt;td&gt;devpi&lt;/td&gt;
+&lt;td&gt;支持&lt;/td&gt;
+&lt;td&gt;支持&lt;/td&gt;
+&lt;td&gt;★★★★&lt;/td&gt;
+&lt;td&gt;★★★★★&lt;/td&gt;
+&lt;td&gt;支持 Web + XML RPC&lt;/td&gt;
+&lt;td&gt;2014-05-03(本文截稿时)&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;DjangoPyPI&lt;/td&gt;
+&lt;td&gt;支持&lt;/td&gt;
+&lt;td&gt;不支持&lt;/td&gt;
+&lt;td&gt;★&lt;/td&gt;
+&lt;td&gt;无&lt;/td&gt;
+&lt;td&gt;支持 Web + XML RPC&lt;/td&gt;
+&lt;td&gt;2012-04-19&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;chishop&lt;/td&gt;
+&lt;td&gt;不支持&lt;/td&gt;
+&lt;td&gt;不支持&lt;/td&gt;
+&lt;td&gt;无&lt;/td&gt;
+&lt;td&gt;无&lt;/td&gt;
+&lt;td&gt;不支持&lt;/td&gt;
+&lt;td&gt;2011-04-02&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;pypiserver&lt;/td&gt;
+&lt;td&gt;支持&lt;/td&gt;
+&lt;td&gt;不支持&lt;/td&gt;
+&lt;td&gt;★★★★★&lt;/td&gt;
+&lt;td&gt;无&lt;/td&gt;
+&lt;td&gt;不支持&lt;/td&gt;
+&lt;td&gt;2014-04-21&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;Cheese Shop&lt;/td&gt;
+&lt;td&gt;不支持&lt;/td&gt;
+&lt;td&gt;不支持&lt;/td&gt;
+&lt;td&gt;★★&lt;/td&gt;
+&lt;td&gt;无&lt;/td&gt;
+&lt;td&gt;支持Web + XML RPC&lt;/td&gt;
+&lt;td&gt;已终止开发&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;localshop&lt;/td&gt;
+&lt;td&gt;支持&lt;/td&gt;
+&lt;td&gt;支持&lt;/td&gt;
+&lt;td&gt;★★★★&lt;/td&gt;
+&lt;td&gt;无&lt;/td&gt;
+&lt;td&gt;只支持XML RPC&lt;/td&gt;
+&lt;td&gt;2014-03-12&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;mypypi&lt;/td&gt;
+&lt;td&gt;不支持&lt;/td&gt;
+&lt;td&gt;不支持&lt;/td&gt;
+&lt;td&gt;★★&lt;/td&gt;
+&lt;td&gt;无&lt;/td&gt;
+&lt;td&gt;不支持&lt;/td&gt;
+&lt;td&gt;2013-05-31&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;proxypypi&lt;/td&gt;
+&lt;td&gt;支持&lt;/td&gt;
+&lt;td&gt;支持&lt;/td&gt;
+&lt;td&gt;无&lt;/td&gt;
+&lt;td&gt;无&lt;/td&gt;
+&lt;td&gt;不支持&lt;/td&gt;
+&lt;td&gt;2013-12-06&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;Flask-Pypi-Proxy&lt;/td&gt;
+&lt;td&gt;支持&lt;/td&gt;
+&lt;td&gt;支持&lt;/td&gt;
+&lt;td&gt;无&lt;/td&gt;
+&lt;td&gt;无&lt;/td&gt;
+&lt;td&gt;不支持&lt;/td&gt;
+&lt;td&gt;2014-01-08&lt;/td&gt;
+&lt;/tr&gt;
+&lt;/tbody&gt;
+&lt;/table&gt;
+&lt;p&gt;对上表中各列的详细解释：&lt;/p&gt;
+&lt;h4&gt;PyPI 代理镜像&lt;/h4&gt;
+&lt;p&gt;一些比较“古老”的 PyPI Server 只实现了 官方PyPI 上已有功能，即允许用户上传, 下载，搜索 Python Packages。 
+换而言之， 对于每个 Python Package， 都要先上传到私有的 PyPI，然后才能下载 。可是在实际开发中， 要安装的各种公共的 Python Package 的数量往往要远远多余自己公司内部的 私有 Package 的数量， 一一手动上传显然并不是及。所以， 大部分“现代”的 PyPI Server 无法在本地找到一个 Python Package 时，会自动去 官方PYPI 查找一次， 并从 官方PYPI 下载对应版本的 Python Package。&lt;/p&gt;
+&lt;h4&gt;本地缓存&lt;/h4&gt;
+&lt;p&gt;这项功能是以 “PyPI 代理镜像” 为前提的。对于公开的的 Python Package，从 PyPI上下载回来后。如果能在本地做一个缓存，下次请求就不必再去访问外网了。这不仅提高了下载速度，也保证了 PyPI Down掉后不会影响你网站/软件的部署。此外在某些生产环境下可能要禁止访问外网，再者现在不少程序员带着笔记本去喜欢去星巴克，公园之类的场合码代码, 这些地方的网速往往不是很稳定，这项功能就更加实用了。&lt;/p&gt;
+&lt;h4&gt;单元测试&lt;/h4&gt;
+&lt;p&gt;单元测试的数量和覆盖率显然是衡量软件质量的指标。 devpi 的单元测试非常完善， 其测试用例多达 200 多个。 值得一提的是， Python 社区里两大著名测试工具 &lt;code&gt;pytest&lt;/code&gt; 和 &lt;code&gt;tox&lt;/code&gt; 也是出自 devpi 的作者 holger krekel 笔下。 因此， 对于 devpi 的代码质量， 我们大可打五星好评。&lt;/p&gt;
+&lt;h4&gt;系统测试&lt;/h4&gt;
+&lt;p&gt;除了完善的单元测试外， devpi 还有着一个看似疯狂的系统测试。 &lt;code&gt;devpi/server/extra/compare_pypi_devpi.py&lt;/code&gt; 这个脚本会去抓取 PyPI 上所有 3 万 多个 package 的链接， 并和 devpi 的本地缓存比较， 从而保证了所有 PyPI 上的 Python Package 都是能被 devpi 处理的。 据 devpi 的作者透露， 他用这个测试脚本发现了不少古怪的，需要特殊处理的 package。 可见这个看似变态的系统测试还是很有必要的。 由于其他 PyPI Server 都没有做过这类测试， 其可靠性不由让人怀疑。&lt;/p&gt;
+&lt;p&gt;搜索这块没有多少可讲的，略过不谈。&lt;/p&gt;
+&lt;h4&gt;项目的开发活跃度&lt;/h4&gt;
+&lt;p&gt;如果项目长期得不到更新，不仅用户渴望的新功能不会被实现， 那些困扰用户的 bug 也不会被修复。1-2年的不到得不到更新对一个开源项目往往是致命的。 devpi 的开发十分活跃，几乎每天都有提交。 考虑到，再过不久， &lt;a href="https://warehouse.python.org/"&gt;Warehouse&lt;/a&gt; 就要取代现有的基于 Cheese Shop 的 PYPI了。届时 新的 PyPI 会新增一些功能和API, 我们自然也希望 私有的 PyPI Server 能实现这些功能。 我在 twitter 上同时 fololow 了 pip 和 PYPI 的主要维护者 @dstufft 和 devpi 的作者 @hpk42， 常见到两人讨论如何在 devpi 上实现 warehouse 的新功能。&lt;/p&gt;
+&lt;hr /&gt;
+&lt;p&gt;不难看出， 对于每一指标， devpi 在同类竞争者中都是最优秀的。&lt;/p&gt;
+&lt;h3&gt;devpi 特有的功能&lt;/h3&gt;
+&lt;h4&gt;Index 继承&lt;/h4&gt;
+&lt;p&gt;这是前面提到的 “PyPI 代理镜像” 功能的加强版。像 pypiserver， proxypypi 等实现只支持两个Index： 私有的和共有的。 在私有 Index 上找不到用户请求的 Python Package时， 就会 fallback 去 Public PyPI。 devpi 对这一功能做了扩展， devpi可以支持多个 Index， 这些Index可以像面向对象编程里的类一样， 存在继承关系。 &lt;/p&gt;
+&lt;p&gt;举个实际一点的使用例子。在我司还有少量系统是运行在老旧的 FreeBSD 和 Pythohn 2.5 上。，不少 library 是无法直接工作的， 要打 patch。所以我司会维护两个 Index， 一个放公司内部开发的库(Internal Index)， 一个放专门为老系统适配修改的后的 Package(Legacy Patched Index), 继承关系如下：&lt;/p&gt;
+&lt;p&gt;&lt;code&gt;Public PyPI --&amp;gt; Internal Index --&amp;gt; Legacy Patched Index&lt;/code&gt; &lt;/p&gt;
+&lt;p&gt;这样老系统使用 Legacy Patched Index ，新系统使用 Internal Index， 互不干扰。那些同时兼容新老系统的 Package 就上传到 Internal Index， Legacy Patched Index 因为继承的原因， 也可以使用。&lt;/p&gt;
+&lt;h4&gt;集成 Jenkins&lt;/h4&gt;
+&lt;h4&gt;数据导入/导出&lt;/h4&gt;
+&lt;p&gt;用户上传到 devpi 的 package 是可以被统一导出和导入的。 这项功能除了用于数据备份外， 也被用于 devpi 升级时的数据迁移。&lt;/p&gt;
+&lt;h4&gt;replication&lt;/h4&gt;
+&lt;p&gt;devpi 原生支持 replication 和 failover， 保证高可用。&lt;/p&gt;</summary></entry><entry><title>Python Packaging 编年史</title><link href="https://wing2south.com/post/python-packaging-timeline/" rel="alternate"></link><published>2014-04-16T20:57:00+08:00</published><updated>2014-04-16T20:57:00+08:00</updated><author><name>Leonardo Zhou</name></author><id>tag:wing2south.com,2014-04-16:post/python-packaging-timeline/</id><summary type="html">&lt;div class="cd-container" id="cd-timeline" style="display:body"&gt;
+&lt;h2&gt;distutils-sig 工作组成立&lt;/h2&gt;
+&lt;p&gt;最初，Python 并没有自带的包管理器。 纯 Python 的模块（module）往往是通过直接拷贝源代码到相应目录来安装的。 如果要发布的模块包含 C extension ，那么还要写一个冗长的 &lt;code&gt;Makefile&lt;/code&gt;。 导致程序员之间想要共享模块很不方便。&lt;/p&gt;
+&lt;p&gt;在 1998年的 Pycon 上， 终于有人 hold 不住了， Greg Ward 作了一场名为 "Building Extensions Considered Painful" 的演讲，引起了很多与会者的共鸣。 于是会后他们建立了 distutils-sig 工作组和同名的邮件列表，专门用来讨论开发 Python 包管理系统的相关事宜。&lt;/p&gt;
+&lt;p&gt;&lt;em&gt;1998年&lt;/em&gt;&lt;/p&gt;
+&lt;h2&gt;disutils 被纳入 Python 标准库&lt;/h2&gt;
+&lt;p&gt;历时2年的开发后，distutils 终于修成正果，被添加到 Python 1.6 的标准库中。从此 Python 社区有了自己的 包管理库。&lt;/p&gt;
+&lt;p&gt;&lt;code&gt;Disutils&lt;/code&gt; 使用 &lt;code&gt;setup.py&lt;/code&gt; 作为 模块的配置文件， 并通过 &lt;code&gt;python setup.py CMD&lt;/code&gt; 的形式， 提供了一套用于编译 C extension, 打包 ... 的命令&lt;/p&gt;
+&lt;p&gt;尽管用今天的眼光来看，&lt;code&gt;Disutils&lt;/code&gt; 有很多不足 。但在当时 &lt;code&gt;Disutils&lt;/code&gt; 确实是一个十分出色的包管理系统。由于吸取了Perl 社区1在&lt;code&gt;Makefile.PL&lt;/code&gt; 上的教训，且为了更好地跨平台， &lt;code&gt;Disutils&lt;/code&gt; 没有基于当时盛行的 Makefile。&lt;code&gt;Disutils&lt;/code&gt; 充分运用了 Python 简明而又强大的特性， 没有为了 Packaging 去单独研发一套 DSL， &lt;code&gt;setup.py&lt;/code&gt; 就是一个 普通的 Python 文件。&lt;/p&gt;
+&lt;p&gt;&lt;em&gt;2000年&lt;/em&gt;&lt;/p&gt;
+&lt;h2&gt;catalog-sig 工作组成立&lt;/h2&gt;
+&lt;p&gt;当时 Perl 社区 的 CPAN 运营的非常成功。 眼红的 Pythonista 们也开始着手创建 Python 的公共第三方模块库&lt;/p&gt;
+&lt;p&gt;&lt;em&gt;2000年&lt;/em&gt;&lt;/p&gt;
+&lt;h2&gt;PEP 241 Metadata for Python Software Packages&lt;/h2&gt;
+&lt;p&gt;&lt;code&gt;A.M. Kuchling&lt;/code&gt; 起草了 PEP 241,用于规范 Python Package 的元信息&lt;/p&gt;
+&lt;p&gt;&lt;em&gt;2001年&lt;/em&gt;&lt;/p&gt;
+&lt;h2&gt;PEP 301 Package Index and Metadata for Distutils&lt;/h2&gt;
+&lt;p&gt;&lt;code&gt;PEP 301&lt;/code&gt; 是 &lt;code&gt;PEP 241&lt;/code&gt; 的补充。约定了元信息 该以怎样的格式被存储在 &lt;code&gt;setup.py&lt;/code&gt; 中， 来让 &lt;code&gt;disutils&lt;/code&gt; 和 &lt;code&gt;PyPI&lt;/code&gt; 识别。&lt;/p&gt;
+&lt;p&gt;&lt;em&gt;2002年&lt;/em&gt;&lt;/p&gt;
+&lt;h2&gt;PyPI 正式上线&lt;/h2&gt;
+&lt;p&gt;Python Package Index(PyPI) 最初也被叫做 Cheeseshop。时至今日， PyPI 已经收录近 5万个 第三方开源模块。
+&lt;code&gt;Disutils&lt;/code&gt; 也做了相应的升级，以支持元数据和上传 Python Package 到 PyPI。&lt;/p&gt;
+&lt;p&gt;&lt;em&gt;2003年&lt;/em&gt;&lt;/p&gt;
+&lt;h2&gt;setuptools 发布&lt;/h2&gt;
+&lt;p&gt;&lt;code&gt;setuptools&lt;/code&gt; 是由 Phillip Eby 开发的。&lt;/p&gt;
+&lt;p&gt;&lt;em&gt;2004年&lt;/em&gt;&lt;/p&gt;
+&lt;h2&gt;virtualenv 发布&lt;/h2&gt;
+&lt;p&gt;最初， 所有的 Python Package 都是安装在系统的全局 &lt;code&gt;site-packages&lt;/code&gt; 目录下。开发者要安装第三方库，常常要有 &lt;code&gt;root&lt;/code&gt; 权限。不同项目安装的第三方库也容易导致版本冲突。Ian Bicking 开发了 &lt;code&gt;virtualenv&lt;/code&gt; 用于创建独立的 Python 运行环境。virtualenv 和 pip 应该是每个 Python 程序员熟知的工具， 这里就不再赘述了。&lt;/p&gt;
+&lt;p&gt;&lt;em&gt;2007年&lt;/em&gt;&lt;/p&gt;
+&lt;h2&gt;pip 发布&lt;/h2&gt;
+&lt;p&gt;&lt;code&gt;pip&lt;/code&gt; 同样是由 Ian Bicking 开发。&lt;/p&gt;
+&lt;p&gt;&lt;em&gt;2008年&lt;/em&gt;&lt;/p&gt;
+&lt;h2&gt;distribute&lt;/h2&gt;
+&lt;p&gt;&lt;code&gt;setuptools&lt;/code&gt; 很快就成为 Python 社区中首选的包管理库。但是正当 &lt;code&gt;setuptools&lt;/code&gt; 如日中天的时候，它的开发却嘎然而止。 明明有一大堆 pull request 在等待 merge, 开发者却杳无音信。Python 3 的支持也迟迟不加。 最终 Tarek Ziade 从 &lt;code&gt;setuptools&lt;/code&gt; fork 出了 &lt;code&gt;distribute&lt;/code&gt;。&lt;/p&gt;
+&lt;p&gt;虽然 &lt;code&gt;distribute&lt;/code&gt; 在各方面都优于 &lt;code&gt;setuptools&lt;/code&gt;， 但 &lt;code&gt;setuptools&lt;/code&gt; 毕竟盛名在外，Python 社区 从  &lt;code&gt;setuptools&lt;/code&gt; 转移到 &lt;code&gt;distribute&lt;/code&gt; 上话了很长时间， 并造成了一定的社区分裂。&lt;/p&gt;
+&lt;p&gt;&lt;code&gt;2008年&lt;/code&gt;&lt;/p&gt;
+&lt;h2&gt;PyPA 成立&lt;/h2&gt;
+&lt;p&gt;&lt;code&gt;2011年 2月 28日&lt;/code&gt;&lt;/p&gt;
+&lt;h2&gt;Distutils2 的开发被终止&lt;/h2&gt;
+&lt;p&gt;曾被寄予厚望的 &lt;code&gt;disutils2&lt;/code&gt;，没能按原计划在随 Python 3.3. 发布。&lt;/p&gt;
+&lt;p&gt;&lt;code&gt;disutils2&lt;/code&gt; 项目失败的原因有很多。 &lt;code&gt;disutils2&lt;/code&gt; 的开发者人数只有 1-2 名，而且都是在用业余时间开发, 由于开发者没有足够的精力， 开发经常陷入停滞。项目也十分缺少 beta 用户，也很少得到用户的反馈。&lt;/p&gt;
+&lt;p&gt;&lt;code&gt;2011年 2月 28日&lt;/code&gt;&lt;/p&gt;
+&lt;h2&gt;Pycon 2013 - Directions for Packaging&lt;/h2&gt;
+&lt;p&gt;由于 &lt;code&gt;disutils2&lt;/code&gt; 项目被放弃，对开发者而言， 未来的 Python Packaing 会是怎么样是个未知数。&lt;/p&gt;
+&lt;p&gt;于是趁着 Python 程序员的年度盛会 Pycon 的召开，PyPA 设法让 &lt;code&gt;distributue&lt;/code&gt;,  &lt;code&gt;virtualenv&lt;/code&gt;, &lt;code&gt;pip&lt;/code&gt;, &lt;code&gt;wheel&lt;/code&gt;,  &lt;code&gt;PyPI&lt;/code&gt;,  &lt;code&gt;zc.buildout&lt;/code&gt; 等项目的开发者们齐聚一堂, 共同讨论和规划 Python Packaging 未来的开发路线。
+&lt;a href="https://www.youtube.com/watch?v=ePFWp3oSfyU"&gt;Youtube 视频&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;&lt;code&gt;2013年 3月 15日&lt;/code&gt;&lt;/p&gt;
+&lt;h2&gt;PyPI 有了 CDN 加速&lt;/h2&gt;
+&lt;p&gt;Fastly 公司很慷慨地为 PyPI 提供了免费的 CDN 加速。&lt;/p&gt;
+&lt;p&gt;天朝用户应该对此印象十分深刻， 这倒不是因为有了 CDN 之后访问速度变快了。2014年上半年有一段时间 PyPI无法正常访问就是拜某墙所赐。&lt;/p&gt;
+&lt;p&gt;&lt;code&gt;2013年 5月 26日&lt;/code&gt;&lt;/p&gt;
+&lt;h2&gt;Distribute 项目被 merge 回了 setuptools&lt;/h2&gt;
+&lt;p&gt;&lt;code&gt;2013年 6月 9日&lt;/code&gt;&lt;/p&gt;
+&lt;h2&gt;pip 成为 Python 3.4 自带的包管理库&lt;/h2&gt;
+&lt;p&gt;让我们看个冷笑话吧：&lt;/p&gt;
+&lt;p&gt;甲： Python 的包管理工具是什么？ &lt;/p&gt;
+&lt;p&gt;乙：&lt;code&gt;pip&lt;/code&gt;&lt;/p&gt;
+&lt;p&gt;甲：pip` 是 Python 自带的吗？&lt;/p&gt;
+&lt;p&gt;乙：不是。 甲：那么我应该怎么安装 pip ? &lt;/p&gt;
+&lt;p&gt;乙： &lt;code&gt;easy_install pip&lt;/code&gt;&lt;/p&gt;
+&lt;p&gt;甲：&lt;code&gt;easy_install&lt;/code&gt; 是什么？&lt;/p&gt;
+&lt;p&gt;乙：一个 Python 包管理工具&lt;/p&gt;
+&lt;p&gt;甲：...&lt;/p&gt;
+&lt;p&gt;&lt;code&gt;2013年 8月 10日&lt;/code&gt;&lt;/p&gt;
+&lt;/div&gt;
+&lt;style type="text/css"&gt;
+
+*, *:after, *:before {
+  -webkit-box-sizing: border-box;
+  -moz-box-sizing: border-box;
+  box-sizing: border-box;
+}
+
+.entry-content {
+  color: #7f8c97;
+  background-color: #e9f0f5;
+}
+
+.cd-container a {
+  color: #acb7c0;
+  text-decoration: none;
+  font-family: "Open Sans", sans-serif;
+}
+
+.cd-container img {
+  max-width: 100%;
+}
+
+.cd-container h1, .cd-container h2 {
+  font-family: "Open Sans", sans-serif;
+  font-weight: bold;
+  margin-top: 0 !important;
+}
+
+.cd-container {
+  /* this class is used to give a max-width to the element it is applied to, and center it horizontally when it reaches that max-width */
+  width: 90%;
+  max-width: 1170px;
+  margin: 0 auto;
+}
+.cd-container::after {
+  /* clearfix */
+  content: '';
+  display: table;
+  clear: both;
+}
+
+#cd-timeline {
+  position: relative;
+  padding: 2em 0;
+  margin-top: 2em;
+  margin-bottom: 2em;
+}
+#cd-timeline::before {
+  /* this is the vertical line */
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 18px;
+  height: 100%;
+  width: 4px;
+  background: #d7e4ed;
+}
+
+@media only screen and (min-width: 1170px) {
+  #cd-timeline {
+    margin-top: 3em;
+    margin-bottom: 3em;
+  }
+  #cd-timeline::before {
+    left: 50%;
+    margin-left: -2px;
+  }
+}
+
+.timeline-block {
+  position: relative;
+  margin: 2em 0;
+  *zoom: 1;
+}
+.timeline-block:before, .timeline-block:after {
+  content: " ";
+  display: table;
+}
+.timeline-block:after {
+  clear: both;
+}
+.timeline-block:first-child {
+  margin-top: 0;
+}
+.timeline-block:last-child {
+  margin-bottom: 0;
+}
+@media only screen and (min-width: 1170px) {
+  .timeline-block {
+    margin: 4em 0;
+  }
+  .timeline-block:first-child {
+    margin-top: 0;
+  }
+  .timeline-block:last-child {
+    margin-bottom: 0;
+  }
+}
+
+.cd-timeline-img {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  box-shadow: 0 0 0 4px #ffffff, inset 0 2px 0 rgba(0, 0, 0, 0.08), 0 3px 0 4px rgba(0, 0, 0, 0.05);
+}
+.cd-timeline-img .genericon {
+  color: white;
+  font-size: 36px;
+  margin-left: 14px;
+  margin-top: 14px;
+}
+.cd-timeline-img.cd-green {
+  background: #75ce66;
+}
+.cd-timeline-img.cd-red {
+  background: #c03b44;
+}
+.cd-timeline-img.cd-yellow {
+  background: #f0ca45;
+}
+@media only screen and (min-width: 1170px) {
+  .cd-timeline-img {
+    width: 60px;
+    height: 60px;
+    left: 50%;
+    margin-left: -30px;
+    /* Force Hardware Acceleration in WebKit */
+    -webkit-transform: translateZ(0);
+    -webkit-backface-visibility: hidden;
+  }
+  .cssanimations .cd-timeline-img.is-hidden {
+    visibility: hidden;
+  }
+  .cssanimations .cd-timeline-img.bounce-in {
+    visibility: visible;
+    -webkit-animation: cd-bounce-1 0.6s;
+    -moz-animation: cd-bounce-1 0.6s;
+    animation: cd-bounce-1 0.6s;
+  }
+}
+
+@-webkit-keyframes cd-bounce-1 {
+  0% {
+    opacity: 0;
+    -webkit-transform: scale(0.5);
+    -moz-transform: scale(0.5);
+    -ms-transform: scale(0.5);
+    -o-transform: scale(0.5);
+    transform: scale(0.5);
+  }
+  60% {
+    opacity: 1;
+    -webkit-transform: scale(1.2);
+    -moz-transform: scale(1.2);
+    -ms-transform: scale(1.2);
+    -o-transform: scale(1.2);
+    transform: scale(1.2);
+  }
+  100% {
+    -webkit-transform: scale(1);
+    -moz-transform: scale(1);
+    -ms-transform: scale(1);
+    -o-transform: scale(1);
+    transform: scale(1);
+  }
+}
+@-moz-keyframes cd-bounce-1 {
+  0% {
+    opacity: 0;
+    -webkit-transform: scale(0.5);
+    -moz-transform: scale(0.5);
+    -ms-transform: scale(0.5);
+    -o-transform: scale(0.5);
+    transform: scale(0.5);
+  }
+  60% {
+    opacity: 1;
+    -webkit-transform: scale(1.2);
+    -moz-transform: scale(1.2);
+    -ms-transform: scale(1.2);
+    -o-transform: scale(1.2);
+    transform: scale(1.2);
+  }
+  100% {
+    -webkit-transform: scale(1);
+    -moz-transform: scale(1);
+    -ms-transform: scale(1);
+    -o-transform: scale(1);
+    transform: scale(1);
+  }
+}
+@-o-keyframes cd-bounce-1 {
+  0% {
+    opacity: 0;
+    -webkit-transform: scale(0.5);
+    -moz-transform: scale(0.5);
+    -ms-transform: scale(0.5);
+    -o-transform: scale(0.5);
+    transform: scale(0.5);
+  }
+  60% {
+    opacity: 1;
+    -webkit-transform: scale(1.2);
+    -moz-transform: scale(1.2);
+    -ms-transform: scale(1.2);
+    -o-transform: scale(1.2);
+    transform: scale(1.2);
+  }
+  100% {
+    -webkit-transform: scale(1);
+    -moz-transform: scale(1);
+    -ms-transform: scale(1);
+    -o-transform: scale(1);
+    transform: scale(1);
+  }
+}
+@keyframes cd-bounce-1 {
+  0% {
+    opacity: 0;
+    -webkit-transform: scale(0.5);
+    -moz-transform: scale(0.5);
+    -ms-transform: scale(0.5);
+    -o-transform: scale(0.5);
+    transform: scale(0.5);
+  }
+  60% {
+    opacity: 1;
+    -webkit-transform: scale(1.2);
+    -moz-transform: scale(1.2);
+    -ms-transform: scale(1.2);
+    -o-transform: scale(1.2);
+    transform: scale(1.2);
+  }
+  100% {
+    -webkit-transform: scale(1);
+    -moz-transform: scale(1);
+    -ms-transform: scale(1);
+    -o-transform: scale(1);
+    transform: scale(1);
+  }
+}
+.timeline-content {
+  position: relative;
+  margin-left: 60px;
+  background: #ffffff;
+  border-radius: 0.25em;
+  padding: 1em;
+  box-shadow: 0 3px 0 #d7e4ed;
+  *zoom: 1;
+}
+.timeline-content:before, .timeline-content:after {
+  content: " ";
+  display: table;
+}
+.timeline-content:after {
+  clear: both;
+}
+.timeline-content h2 {
+  color: #303e49;
+}
+.timeline-content p, .timeline-content .cd-date {
+  font-size: 13px;
+  font-size: 0.8125rem;
+}
+.timeline-content .cd-date {
+  display: inline-block;
+}
+.timeline-content p {
+  margin: 1em 0;
+  line-height: 1.6;
+}
+.timeline-content .cd-date {
+  float: left;
+  padding: .8em 0;
+  opacity: .7;
+}
+.timeline-content::before {
+  content: '';
+  position: absolute;
+  top: 16px;
+  right: 100%;
+  height: 0;
+  width: 0;
+  border: 7px solid transparent;
+  border-right: 7px solid #ffffff;
+}
+@media only screen and (min-width: 768px) {
+  .timeline-content h2 {
+    font-size: 20px;
+    font-size: 1.25rem;
+  }
+  .timeline-content p {
+    font-size: 16px;
+    font-size: 1rem;
+  }
+ .timeline-content .cd-date {
+    font-size: 14px;
+    font-size: 0.875rem;
+  }
+}
+@media only screen and (min-width: 1170px) {
+  .timeline-content {
+    margin-left: 0;
+    padding: 1.6em;
+    width: 45%;
+  }
+  .timeline-content::before {
+    top: 24px;
+    left: 100%;
+    border-color: transparent;
+    border-left-color: #ffffff;
+  }
+  .timeline-content .cd-date {
+    position: absolute;
+    width: 100%;
+    left: 132%;
+    top: 6px;
+    font-size: 16px;
+    font-size: 1rem;
+  }
+  .timeline-block:nth-child(even) .timeline-content {
+    float: right;
+  }
+  .timeline-block:nth-child(even) .timeline-content::before {
+    top: 24px;
+    left: auto;
+    right: 100%;
+    border-color: transparent;
+    border-right-color: #ffffff;
+  }
+
+  .timeline-block:nth-child(even) .timeline-content .cd-date {
+    left: auto;
+    right: 132%;
+    text-align: right;
+  }
+  .cssanimations .timeline-content.is-hidden {
+    visibility: hidden;
+  }
+  .cssanimations .timeline-content.bounce-in {
+    visibility: visible;
+    -webkit-animation: cd-bounce-2 0.6s;
+    -moz-animation: cd-bounce-2 0.6s;
+    animation: cd-bounce-2 0.6s;
+  }
+}
+
+@media only screen and (min-width: 1170px) {
+  /* inverse bounce effect on even content blocks */
+  .cssanimations .timeline-block:nth-child(even) .timeline-content.bounce-in {
+    -webkit-animation: cd-bounce-2-inverse 0.6s;
+    -moz-animation: cd-bounce-2-inverse 0.6s;
+    animation: cd-bounce-2-inverse 0.6s;
+  }
+}
+@-webkit-keyframes cd-bounce-2 {
+  0% {
+    opacity: 0;
+    -webkit-transform: translateX(-100px);
+    -moz-transform: translateX(-100px);
+    -ms-transform: translateX(-100px);
+    -o-transform: translateX(-100px);
+    transform: translateX(-100px);
+  }
+  60% {
+    opacity: 1;
+    -webkit-transform: translateX(20px);
+    -moz-transform: translateX(20px);
+    -ms-transform: translateX(20px);
+    -o-transform: translateX(20px);
+    transform: translateX(20px);
+  }
+  100% {
+    -webkit-transform: translateX(0);
+    -moz-transform: translateX(0);
+    -ms-transform: translateX(0);
+    -o-transform: translateX(0);
+    transform: translateX(0);
+  }
+}
+@-moz-keyframes cd-bounce-2 {
+  0% {
+    opacity: 0;
+    -webkit-transform: translateX(-100px);
+    -moz-transform: translateX(-100px);
+    -ms-transform: translateX(-100px);
+    -o-transform: translateX(-100px);
+    transform: translateX(-100px);
+  }
+  60% {
+    opacity: 1;
+    -webkit-transform: translateX(20px);
+    -moz-transform: translateX(20px);
+    -ms-transform: translateX(20px);
+    -o-transform: translateX(20px);
+    transform: translateX(20px);
+  }
+  100% {
+    -webkit-transform: translateX(0);
+    -moz-transform: translateX(0);
+    -ms-transform: translateX(0);
+    -o-transform: translateX(0);
+    transform: translateX(0);
+  }
+}
+@-o-keyframes cd-bounce-2 {
+  0% {
+    opacity: 0;
+    -webkit-transform: translateX(-100px);
+    -moz-transform: translateX(-100px);
+    -ms-transform: translateX(-100px);
+    -o-transform: translateX(-100px);
+    transform: translateX(-100px);
+  }
+  60% {
+    opacity: 1;
+    -webkit-transform: translateX(20px);
+    -moz-transform: translateX(20px);
+    -ms-transform: translateX(20px);
+    -o-transform: translateX(20px);
+    transform: translateX(20px);
+  }
+  100% {
+    -webkit-transform: translateX(0);
+    -moz-transform: translateX(0);
+    -ms-transform: translateX(0);
+    -o-transform: translateX(0);
+    transform: translateX(0);
+  }
+}
+@keyframes cd-bounce-2 {
+  0% {
+    opacity: 0;
+    -webkit-transform: translateX(-100px);
+    -moz-transform: translateX(-100px);
+    -ms-transform: translateX(-100px);
+    -o-transform: translateX(-100px);
+    transform: translateX(-100px);
+  }
+  60% {
+    opacity: 1;
+    -webkit-transform: translateX(20px);
+    -moz-transform: translateX(20px);
+    -ms-transform: translateX(20px);
+    -o-transform: translateX(20px);
+    transform: translateX(20px);
+  }
+  100% {
+    -webkit-transform: translateX(0);
+    -moz-transform: translateX(0);
+    -ms-transform: translateX(0);
+    -o-transform: translateX(0);
+    transform: translateX(0);
+  }
+}
+@-webkit-keyframes cd-bounce-2-inverse {
+  0% {
+    opacity: 0;
+    -webkit-transform: translateX(100px);
+    -moz-transform: translateX(100px);
+    -ms-transform: translateX(100px);
+    -o-transform: translateX(100px);
+    transform: translateX(100px);
+  }
+  60% {
+    opacity: 1;
+    -webkit-transform: translateX(-20px);
+    -moz-transform: translateX(-20px);
+    -ms-transform: translateX(-20px);
+    -o-transform: translateX(-20px);
+    transform: translateX(-20px);
+  }
+  100% {
+    -webkit-transform: translateX(0);
+    -moz-transform: translateX(0);
+    -ms-transform: translateX(0);
+    -o-transform: translateX(0);
+    transform: translateX(0);
+  }
+}
+@-moz-keyframes cd-bounce-2-inverse {
+  0% {
+    opacity: 0;
+    -webkit-transform: translateX(100px);
+    -moz-transform: translateX(100px);
+    -ms-transform: translateX(100px);
+    -o-transform: translateX(100px);
+    transform: translateX(100px);
+  }
+  60% {
+    opacity: 1;
+    -webkit-transform: translateX(-20px);
+    -moz-transform: translateX(-20px);
+    -ms-transform: translateX(-20px);
+    -o-transform: translateX(-20px);
+    transform: translateX(-20px);
+  }
+  100% {
+    -webkit-transform: translateX(0);
+    -moz-transform: translateX(0);
+    -ms-transform: translateX(0);
+    -o-transform: translateX(0);
+    transform: translateX(0);
+  }
+}
+@-o-keyframes cd-bounce-2-inverse {
+  0% {
+    opacity: 0;
+    -webkit-transform: translateX(100px);
+    -moz-transform: translateX(100px);
+    -ms-transform: translateX(100px);
+    -o-transform: translateX(100px);
+    transform: translateX(100px);
+  }
+  60% {
+    opacity: 1;
+    -webkit-transform: translateX(-20px);
+    -moz-transform: translateX(-20px);
+    -ms-transform: translateX(-20px);
+    -o-transform: translateX(-20px);
+    transform: translateX(-20px);
+  }
+  100% {
+    -webkit-transform: translateX(0);
+    -moz-transform: translateX(0);
+    -ms-transform: translateX(0);
+    -o-transform: translateX(0);
+    transform: translateX(0);
+  }
+}
+@keyframes cd-bounce-2-inverse {
+  0% {
+    opacity: 0;
+    -webkit-transform: translateX(100px);
+    -moz-transform: translateX(100px);
+    -ms-transform: translateX(100px);
+    -o-transform: translateX(100px);
+    transform: translateX(100px);
+  }
+  60% {
+    opacity: 1;
+    -webkit-transform: translateX(-20px);
+    -moz-transform: translateX(-20px);
+    -ms-transform: translateX(-20px);
+    -o-transform: translateX(-20px);
+    transform: translateX(-20px);
+  }
+  100% {
+    -webkit-transform: translateX(0);
+    -moz-transform: translateX(0);
+    -ms-transform: translateX(0);
+    -o-transform: translateX(0);
+    transform: translateX(0);
+  }
+}
+&lt;/style&gt;
+
+&lt;script type="text/javascript" src="//upcdn.b0.upaiyun.com/libs/jquery/jquery-2.0.3.min.js"&gt;&lt;/script&gt;
+
+&lt;script type="text/javascript"&gt;
+$(function () {
+    $('#cd-timeline &gt; h2').each(function(){
+      var $this = $(this);
+      // use .add() and .nextUntil() to get both the .section-header
+      // and .section-item elements into a single set for our .wrapAll() call
+      $this.add($this.nextUntil('#cd-timeline &gt; h2', '#cd-timeline &gt; p'))
+        .wrapAll('&lt;div class="timeline-content"/&gt;');
+    });
+
+    $('#cd-timeline &gt; .timeline-content').wrap('&lt;div class="timeline-block"/&gt;');
+
+    $('#cd-timeline .timeline-content').each(function(){
+        var $this = $(this);
+        date_text = $this.children('p:last').text();
+        $this.children('p:last').remove();
+        $this.append('&lt;span class="cd-date"/&gt;')
+        $this.children('.cd-date').text(date_text);
+    });
+
+    $('#cd-timeline .timeline-block').each(function(){
+        var $this = $(this);
+        $this.prepend('&lt;div class="cd-timeline-img"&gt;&lt;/div&gt;');
+        colors = ['cd-green', 'cd-red', 'cd-yellow'];
+        rand_color = colors[Math.floor(Math.random()*colors.length)];
+        $this.children('.cd-timeline-img').addClass(rand_color);
+        $this.children('.cd-timeline-img').append('&lt;span class="genericon"/&gt;')
+        icons = ['genericon-pinned', 'genericon-week', 'genericon-day','genericon-month', 'genericon-time', 'genericon-user'];
+        rand_icon = icons[Math.floor(Math.random()*icons.length)];
+        $this.find('.genericon').addClass(rand_icon);
+
+    });
+});
+
+&lt;/script&gt;</summary><category term="packaging"></category></entry><entry><title>在 vagrant shared folder 下运行 python setup.py sdist 会报错的解决方法</title><link href="https://wing2south.com/post/virtual-box-shared-folder-run-setuppy-stdist/" rel="alternate"></link><published>2014-03-18T14:05:00+08:00</published><updated>2014-03-18T14:05:00+08:00</updated><author><name>Leonardo Zhou</name></author><id>tag:wing2south.com,2014-03-18:post/virtual-box-shared-folder-run-setuppy-stdist/</id><summary type="html">&lt;p&gt;我 PC 上的开发环境是 Windows + Vagrant ( VirtualBox )。常用的编辑器则是 sublime, pycharm 之类的图形化工具。为了方便在 windows 上编辑 vm 中的文件，代码都是放在 virtual box 的 shared folder 下的。&lt;/p&gt;
+&lt;p&gt;前不久，在我打包  &lt;a href="https://github.com/glasslion/django-qiniu-storage"&gt;django-qiniu-storage&lt;/a&gt; 并发布到 pypi 时， 遇到了点麻烦。&lt;/p&gt;
+&lt;p&gt;当我运行 &lt;code&gt;python setup.py sdist&lt;/code&gt; 时，出现了如下错误：&lt;/p&gt;
+&lt;div class="highlight snippet"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="o"&gt;&amp;gt;&amp;gt;&amp;gt;&lt;/span&gt; &lt;span class="n"&gt;python&lt;/span&gt; &lt;span class="n"&gt;setup&lt;/span&gt;&lt;span class="p"&gt;.&lt;/span&gt;&lt;span class="n"&gt;py&lt;/span&gt; &lt;span class="n"&gt;sdist&lt;/span&gt;
+
+&lt;span class="n"&gt;running&lt;/span&gt; &lt;span class="n"&gt;sdist&lt;/span&gt;
+&lt;span class="n"&gt;running&lt;/span&gt; &lt;span class="n"&gt;egg_info&lt;/span&gt;
+&lt;span class="p"&gt;...&lt;/span&gt;
+&lt;span class="n"&gt;hard&lt;/span&gt; &lt;span class="n"&gt;linking&lt;/span&gt; &lt;span class="n"&gt;xxx&lt;/span&gt; &lt;span class="o"&gt;-&amp;gt;&lt;/span&gt; &lt;span class="n"&gt;xxx&lt;/span&gt;
+&lt;span class="n"&gt;error&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt; &lt;span class="k"&gt;Operation&lt;/span&gt; &lt;span class="k"&gt;not&lt;/span&gt; &lt;span class="n"&gt;permitted&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;还好错误信息还算是比较明了的: 因为脚本是在 Ubuntu 虚拟机下运行， Python 假设操作系统支持 hardlink, 于是 setup.py 会尝试在工作目录下建立 hardlink,  但是virtualbox 目前还不支持在 shared folder下建立 hard link, 从而引发了  Operation not permitted。&lt;/p&gt;
+&lt;p&gt;用 Google 和 stackoverflow 搜索之后，发现这个 bug 已经分别被人反馈给 &lt;a href="http://bugs.python.org/issue8876"&gt;Python&lt;/a&gt; 和 &lt;a href="https://www.virtualbox.org/ticket/818"&gt;virtualbox&lt;/a&gt; 的开发者了，但是在 Python 和 virtualbox 任何一方都不太可能在短时间内被修复。&lt;/p&gt;
+&lt;p&gt;幸运的是，在 python 的 bug 讨论列表里， 有人给出了一个可行的解决方案:&lt;/p&gt;
+&lt;blockquote&gt;
+&lt;p&gt;A dirty hack is to include this line at the top of your setup.py: del os.link&lt;/p&gt;
+&lt;/blockquote&gt;
+&lt;p&gt;因为 &lt;code&gt;disutils&lt;/code&gt; 是通过检查 os.link 是否为 None 来决定是否使用 hardlink, 那么将 os.link monkey patch 为 None 就行了 。这么做除了多占用些微不足道的磁盘空间，不会有任何副作用。&lt;/p&gt;
+&lt;p&gt;我做了个小改动，通过检查环境变量， 只有当 &lt;code&gt;setup.py&lt;/code&gt; 在 vagrant 下运行时， 才会 &lt;code&gt;del os.link&lt;/code&gt;.&lt;/p&gt;
+&lt;div class="highlight snippet"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="c1"&gt;# put the following code at the beginning of your setup.py&lt;/span&gt;
+&lt;span class="c1"&gt;# if you are not using vagrant, just delete os.link directly,&lt;/span&gt;
+&lt;span class="c1"&gt;# The hard link only saves a little disk space, so you should not care&lt;/span&gt;
+&lt;span class="k"&gt;if&lt;/span&gt; &lt;span class="n"&gt;os&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;environ&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;get&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="s1"&gt;&amp;#39;USER&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;&lt;span class="s1"&gt;&amp;#39;&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt; &lt;span class="o"&gt;==&lt;/span&gt; &lt;span class="s1"&gt;&amp;#39;vagrant&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt;
+    &lt;span class="k"&gt;del&lt;/span&gt; &lt;span class="n"&gt;os&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;link&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;</summary><category term="vagrant"></category></entry><entry><title>A guide to analyzing Python performance</title><link href="https://wing2south.com/post/61576461357/a-guide-to-analyzing-python-performance/" rel="alternate"></link><published>2013-09-18T17:28:11+08:00</published><updated>2013-09-18T17:28:11+08:00</updated><author><name>Leonardo Zhou</name></author><id>tag:wing2south.com,2013-09-18:post/61576461357/a-guide-to-analyzing-python-performance/</id><summary type="html">&lt;p&gt;&lt;a href="http://www.huyng.com/posts/python-performance-analysis/"&gt;链接&lt;/a&gt;&lt;/p&gt;
+&lt;!-- PELICAN_BEGIN_SUMMARY --&gt;
+
+&lt;p&gt;一篇 Python 性能分析方面的好文&lt;!-- PELICAN_END_SUMMARY --&gt;，介绍了分别用 unix &lt;code&gt;time&lt;/code&gt;命令和 &lt;code&gt;context manager&lt;/code&gt; 来粗略/精细地测试 Python 脚本的运行时间； 使用 &lt;code&gt;line_profiler&lt;/code&gt; 库 精细衡量每行代码的执行时间； 使用 &lt;code&gt;memory_profiler&lt;/code&gt; 库测试内存使用情况； 使用 &lt;code&gt;objgraph&lt;/code&gt; 库检测内存泄漏 ...&lt;/p&gt;</summary><category term="performance"></category></entry><entry><title>Appscale——Google App Engine的开源克隆/替代</title><link href="https://wing2south.com/post/59374017369/appscale-google-app-engine/" rel="alternate"></link><published>2013-08-26T14:13:20+08:00</published><updated>2013-08-26T14:13:20+08:00</updated><author><name>Leonardo Zhou</name></author><id>tag:wing2south.com,2013-08-26:post/59374017369/appscale-google-app-engine/</id><summary type="html">&lt;p&gt;这个项目其实出来以及很久了，只是前几天才在HackerNews引起关注，github上的 star,
+watch数也随之飙升。我之前苦苦搜寻GAE的替代时，都没发现这个项目。&lt;/p&gt;
+&lt;p&gt;使用界面:
+&lt;img alt="appscale1" src="http://ww2.sinaimg.cn/large/6c3391c1gw1eeea3r5v0tj20dw0a6gm9.jpg" /&gt;&lt;/p&gt;
+&lt;p&gt;Appscale 在底层使用了大量知名的开源软件， 包括并不限于：&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;Apache Cassandra,&lt;/li&gt;
+&lt;li&gt;Apache Hadoop,&lt;/li&gt;
+&lt;li&gt;Apache HBase,&lt;/li&gt;
+&lt;li&gt;Apache Thrift,&lt;/li&gt;
+&lt;li&gt;Apache Zookeeper,&lt;/li&gt;
+&lt;li&gt;Celery,&lt;/li&gt;
+&lt;li&gt;ejabberd,&lt;/li&gt;
+&lt;li&gt;HAProxy,&lt;/li&gt;
+&lt;li&gt;Hypertable,&lt;/li&gt;
+&lt;li&gt;Nginx,&lt;/li&gt;
+&lt;li&gt;RabbitMQ,&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;Appscale 在这些开源项目 之上实现了一套和 Google App Engine 兼容的 API。而且该项目得到了 Google 官方支持，不愁未来 Google App Engine 更新后的兼容性。&lt;/p&gt;
+&lt;p&gt;无论是编程语言，db, 搜索，map reduce 还是IaaS, 各层都是 pluggable 的，开发者可以自由选择自己最熟悉的 tech stack， 目测是一个很灵活的 PaaS.&lt;/p&gt;
+&lt;p&gt;&lt;img alt="appscale2" src="http://ww4.sinaimg.cn/large/6c3391c1gw1eeea43yhwlj20dw07t3zi.jpg" /&gt;&lt;/p&gt;
+&lt;p&gt;架构图:&lt;/p&gt;
+&lt;p&gt;&lt;img alt="appscale3" src="http://ww2.sinaimg.cn/large/6c3391c1gw1eeea4is7soj20dw09r75b.jpg" /&gt;&lt;/p&gt;
+&lt;/p&gt;
+
+&lt;p&gt;&lt;img alt="appscale4" src="http://ww2.sinaimg.cn/large/6c3391c1gw1eeea5087p2j20do0fwmym.jpg" /&gt;&lt;/p&gt;
+&lt;p&gt;&lt;a href="https://github.com/AppScale/appscale"&gt;view on Github&lt;/a&gt;&lt;/p&gt;</summary><category term="google"></category></entry><entry><title>Migrating to a Custom User Model in Django</title><link href="https://wing2south.com/post/59365178838/migrating-to-a-custom-user-model-in-django/" rel="alternate"></link><published>2013-08-26T11:57:00+08:00</published><updated>2013-08-26T11:57:00+08:00</updated><author><name>Leonardo Zhou</name></author><id>tag:wing2south.com,2013-08-26:post/59365178838/migrating-to-a-custom-user-model-in-django/</id><summary type="html">&lt;p&gt;&lt;a href="http://www.caktusgroup.com/blog/2013/08/07/migrating-custom-user-model-django/"&gt;链接&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;这篇 blog &lt;!-- PELICAN_BEGIN_SUMMARY --&gt; 详尽阐述了把现有的 UserModel 迁移到 Django 1.5 的 Custom User Model 所需的十几个步骤和注意事项&lt;!-- PELICAN_END_SUMMARY --&gt;。&lt;/p&gt;
+&lt;p&gt;对打算迁移 UserModel 的同学来说，是一份很不错的checklist!&lt;/p&gt;</summary><category term="django"></category></entry><entry><title>让django-debug-toolbar支持Python2.5</title><link href="https://wing2south.com/post/58990039224/django-debug-toolbar-python2-5/" rel="alternate"></link><published>2013-08-22T14:27:00+08:00</published><updated>2013-08-22T14:27:00+08:00</updated><author><name>Leonardo Zhou</name></author><id>tag:wing2south.com,2013-08-22:post/58990039224/django-debug-toolbar-python2-5/</id><summary type="html">&lt;p&gt;&lt;code&gt;django-debug-toolbar&lt;/code&gt; 从 0.9.x 开始就放弃对 Python 2.5 的支持了。最简单的做法是将那些 仍深陷在 Python 2.5 泥沼里的 Django 项目的 &lt;code&gt;django-debug-toolbar&lt;/code&gt; 版本指定为 0.8.x。遗憾的是，作为最受欢迎的 Django 第三方 package, &lt;code&gt;django-debug-toolbar&lt;/code&gt; 本身也有不少很有用的第三方 plugin ，而这些 plugin 为了使用 &lt;code&gt;django-debug-toolbar&lt;/code&gt; 的 new features 往往就不再支持 0.8.x 版的 &lt;code&gt;django-debug-toolbar&lt;/code&gt; 了。比如 &lt;a href="https://github.com/orf/django-debug-toolbar-template-timings"&gt;django-debug-toolbar-template-timings&lt;/a&gt; 这个用来 profile Django templates 渲染时间的插件。&lt;/p&gt;
+&lt;p&gt;这种情况下，只能手动去给 &lt;code&gt;django-debug-toolbar&lt;/code&gt; 的源码打 patch了。好在截至目前的 0.9.4 版本，让 &lt;code&gt;django-debug-toolbar&lt;/code&gt; 支持 Python 2.5, 所要做的改动很小。&lt;/p&gt;
+&lt;p&gt;在8个月前，曾有人提交了的一个支持 Python 2.5 的 &lt;a href="https://github.com/django-debug-toolbar/django-debug-toolbar/commit/3013b5a6e4c682004207e944ebea172a39e52e8c"&gt;patch&lt;/a&gt; 到 master 上，但之后由于 Django 1.5 明确放弃 support Python 2.5, 现在的 master 已经再次不支持（而且这次是永久不再支持） Python 2.5了。但对上面的 patch 稍作修改，就能让 pypi 上 &lt;code&gt;django-debug-toolbar&lt;/code&gt; 最新的正式版本0.9.4， 在 Python 2.5 下工作.&lt;/p&gt;
+&lt;p&gt;patch( &lt;a href="https://gist.github.com/glasslion/6303816"&gt;pygments生成的diff highlight html效果不是很好，可以去看 gist&lt;/a&gt;):&lt;/p&gt;
+&lt;div class="highlight snippet"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="gh"&gt;diff --git a/debug_toolbar/panels/sql.py b/debug_toolbar/panels/sql.py&lt;/span&gt;
+&lt;span class="gh"&gt;index 18fffdc..a0bfce8 100644&lt;/span&gt;
+&lt;span class="gd"&gt;--- a/debug_toolbar/panels/sql.py&lt;/span&gt;
+&lt;span class="gi"&gt;+++ b/debug_toolbar/panels/sql.py&lt;/span&gt;
+&lt;span class="gu"&gt;@@ -193,8 +193,14 @@ class SQLDebugPanel(DebugPanel):&lt;/span&gt;
+                 stacktrace = []
+                 for frame in query[&amp;#39;stacktrace&amp;#39;]:
+                     params = map(escape, frame[0].rsplit(&amp;#39;/&amp;#39;, 1) + list(frame[1:]))
+&lt;span class="gi"&gt;+                    params_dict = dict((unicode(idx), v) for idx, v in enumerate(params))&lt;/span&gt;
+                     try:
+&lt;span class="gd"&gt;-                        stacktrace.append(u&amp;#39;&amp;lt;span class=&amp;quot;path&amp;quot;&amp;gt;{0}/&amp;lt;/span&amp;gt;&amp;lt;span class=&amp;quot;file&amp;quot;&amp;gt;{1}&amp;lt;/span&amp;gt; in &amp;lt;span class=&amp;quot;func&amp;quot;&amp;gt;{3}&amp;lt;/span&amp;gt;(&amp;lt;span class=&amp;quot;lineno&amp;quot;&amp;gt;{2}&amp;lt;/span&amp;gt;)\n  &amp;lt;span class=&amp;quot;code&amp;quot;&amp;gt;{4}&amp;lt;/span&amp;gt;&amp;#39;.format(*params))&lt;/span&gt;
+&lt;span class="gi"&gt;+                        stacktrace.append(u&amp;#39;&amp;lt;span class=&amp;quot;path&amp;quot;&amp;gt;%(0)s/&amp;lt;/span&amp;gt;&amp;#39;&lt;/span&gt;
+&lt;span class="gi"&gt;+                              u&amp;#39;&amp;lt;span class=&amp;quot;file&amp;quot;&amp;gt;%(1)s&amp;lt;/span&amp;gt;&amp;#39;&lt;/span&gt;
+&lt;span class="gi"&gt;+                              u&amp;#39; in &amp;lt;span class=&amp;quot;func&amp;quot;&amp;gt;%(3)s&amp;lt;/span&amp;gt;&amp;#39;&lt;/span&gt;
+&lt;span class="gi"&gt;+                              u&amp;#39;(&amp;lt;span class=&amp;quot;lineno&amp;quot;&amp;gt;%(2)s&amp;lt;/span&amp;gt;)\n&amp;#39;&lt;/span&gt;
+&lt;span class="gi"&gt;+                              u&amp;#39;  &amp;lt;span class=&amp;quot;code&amp;quot;&amp;gt;%(4)s&amp;lt;/span&amp;gt;&amp;#39;&lt;/span&gt;
+&lt;span class="gi"&gt;+                              % params_dict)&lt;/span&gt;
+                     except IndexError:
+                         # This frame doesn&amp;#39;t have the expected format, so skip it and move on to the next one
+                         continue
+&lt;/pre&gt;&lt;/div&gt;</summary><category term="django"></category></entry><entry><title>Letterpress</title><link href="https://wing2south.com/post/58607609189/letterpress/" rel="alternate"></link><published>2013-08-18T23:17:41+08:00</published><updated>2013-08-18T23:17:41+08:00</updated><author><name>Leonardo Zhou</name></author><id>tag:wing2south.com,2013-08-18:post/58607609189/letterpress/</id><summary type="html">&lt;p&gt;Letterpress 是 &lt;!-- PELICAN_BEGIN_SUMMARY --&gt; &lt;a href="http://moke.com/"&gt;墨客&lt;/a&gt; 的作者 Wang Ling用Python开发的一款静态博客生成器&lt;!-- PELICAN_END_SUMMARY --&gt;。&lt;/p&gt;
+&lt;p&gt;&lt;img alt="image/letterpress.png" src="http://ww2.sinaimg.cn/large/6c3391c1gw1eee5qg3a1jj20dw09o3yx.jpg" /&gt;&lt;/p&gt;
+&lt;p&gt;Letterpress的风格十分简洁，使用Markdown语法。作者由于习惯用iPad写作，在设计时也特别考虑了在移动平台上的使用体验。&lt;/p&gt;
+&lt;p&gt;服务器端的Letterpress 后台进程通过 &lt;a href="https://github.com/seb-m/pyinotify/"&gt;pyinotify&lt;/a&gt;,监控服务器指定目录下的Markdown文件的增改删，然后将相同的动作作用于对静态博客文件上。&lt;/p&gt;
+&lt;p&gt;配合上dropbox,可以轻易得将本地文件变化，推送到服务器端。管理博客也就是用Markdown编辑器里增改删文件的事。&lt;/p&gt;
+&lt;p&gt;Letterpress还支持使用&lt;a href="http://pygments.org/"&gt;Pygments&lt;/a&gt;高亮Markdown文件里的代码块。&lt;/p&gt;</summary><category term="tool"></category></entry><entry><title>Django 无法在QuerySet中select_related()一个GenericForeignKey的解决方法</title><link href="https://wing2south.com/post/58406919860/django/" rel="alternate"></link><published>2013-08-16T16:20:00+08:00</published><updated>2013-08-16T16:20:00+08:00</updated><author><name>Leonardo Zhou</name></author><id>tag:wing2south.com,2013-08-16:post/58406919860/django/</id><summary type="html">&lt;p&gt;在Django开发中， 用 &lt;code&gt;select_related()&lt;/code&gt; 把 item 的 &lt;code&gt;ForeignKey&lt;/code&gt; 在同一条SQL中通过 join table 一起取出是很常见的做法。但 &lt;code&gt;select_related&lt;/code&gt; 是不支持 &lt;code&gt;GenericForeignKey&lt;/code&gt; （主要用于 ContentType）的。&lt;/p&gt;
+&lt;p&gt;自Django 1.4开始， Django 提供了 &lt;code&gt;prefetch_related&lt;/code&gt; 这个方法来解决这个问题。 除了 &lt;code&gt;GenericForeignKey&lt;/code&gt;. ，&lt;code&gt;prefetch_related&lt;/code&gt; 还可以作用在 &lt;code&gt;ManyToManyField&lt;/code&gt; 和 'many-to-one' 的 ForeignKey 这些 &lt;code&gt;select_related()&lt;/code&gt; 不支持的 field. &lt;code&gt;prefetch_related&lt;/code&gt; 的原理是对related field 做一次独立的 query, 将 related field 缓存在内存中，今后去取 queryset 中各个 item 的 related field 时，就直接从缓存中找，而不是每次都做一次 db query. 对 &lt;code&gt;prefetch_related&lt;/code&gt; 更详细的解释可以参考&lt;a href="docs.djangoproject.com/en/dev/ref/models/querysets/#prefetch-related"&gt;官方文档&lt;/a&gt;。&lt;/p&gt;
+&lt;p&gt;对 Django 版本低于1.4的项目， 可以参考这篇博客 &lt;a href="http://blog.roseman.org.uk/2010/02/22/django-patterns-part-4-forwards-generic-relations/"&gt;Django patterns, part 4: forwards generic relations&lt;/a&gt; 给出的解决方法. 其思路和 prefetch_related 几乎是一样的，都是缓存 related field 。把 N+M 条SQL （N 是 queryset中item的数量，M是的 related_field 的 Model 的 item
+数量） 简化 成2 条 SQL。&lt;/p&gt;
+&lt;p&gt;下面是我基于Daniel Roseman 的博客，在Justin Israel的 &lt;a href="https://gist.github.com/justinfx/3095246#file-cache_generics-py"&gt;gist&lt;/a&gt;基础上改良的脚本，虽然只支持 content_type 的 &lt;code&gt;GenericForeignKey&lt;/code&gt; ，但经过简单的修改， 可以很容易支持其他类型的field.&lt;/p&gt;
+&lt;div class="highlight snippet"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="sd"&gt;&amp;#39;&amp;#39;&amp;#39;&lt;/span&gt;
+&lt;span class="sd"&gt;Cache the generic relation field of all the objects &lt;/span&gt;
+&lt;span class="sd"&gt;in the queryset, using larger bulk queries ahead of time.&lt;/span&gt;
+
+&lt;span class="sd"&gt;Improved from original by Daniel Roseman:&lt;/span&gt;
+&lt;span class="sd"&gt;http://blog.roseman.org.uk/2010/02/22/django-patterns-part-4-forwards-generic-relations/&lt;/span&gt;
+
+&lt;span class="sd"&gt;and&lt;/span&gt;
+
+&lt;span class="sd"&gt;justinfx&amp;#39;s gist cache_generics.py :&lt;/span&gt;
+&lt;span class="sd"&gt;https://gist.github.com/justinfx/3095246#file-cache_generics-py&lt;/span&gt;
+
+&lt;span class="sd"&gt;Supports customized object_id_field and GenericForeignKey name.&lt;/span&gt;
+
+&lt;span class="sd"&gt;&amp;#39;&amp;#39;&amp;#39;&lt;/span&gt;
+
+&lt;span class="kn"&gt;from&lt;/span&gt; &lt;span class="nn"&gt;operator&lt;/span&gt; &lt;span class="kn"&gt;import&lt;/span&gt; &lt;span class="n"&gt;attrgetter&lt;/span&gt;
+&lt;span class="kn"&gt;from&lt;/span&gt; &lt;span class="nn"&gt;django.contrib.contenttypes.models&lt;/span&gt; &lt;span class="kn"&gt;import&lt;/span&gt; &lt;span class="n"&gt;ContentType&lt;/span&gt;
+
+&lt;span class="k"&gt;def&lt;/span&gt; &lt;span class="nf"&gt;cache_generic_content_types&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;queryset&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;object_id_field&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="s1"&gt;&amp;#39;object_id&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;content_type_fk&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="s1"&gt;&amp;#39;content_object&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;):&lt;/span&gt;
+    &lt;span class="sd"&gt;&amp;quot;&amp;quot;&amp;quot;&lt;/span&gt;
+&lt;span class="sd"&gt;    Django does not support select_related on generic foreign key. Thus some&lt;/span&gt;
+&lt;span class="sd"&gt;    ORM actions may trigger N+M querys(N is item number of the queryset and&lt;/span&gt;
+&lt;span class="sd"&gt;    M is the item number of the content type). This function will cache content&lt;/span&gt;
+&lt;span class="sd"&gt;    and reduce N+M querys to 2 querys.&lt;/span&gt;
+
+&lt;span class="sd"&gt;    object_id_field: see https://docs.djangoproject.com/en/1.3/ref/contrib/contenttypes/#django.contrib.contenttypes.generic.GenericRelation&lt;/span&gt;
+&lt;span class="sd"&gt;    content_type_fk: the name of GenericForeignKey which linked to content type&lt;/span&gt;
+&lt;span class="sd"&gt;    &amp;quot;&amp;quot;&amp;quot;&lt;/span&gt;
+    &lt;span class="n"&gt;get_object_id&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;attrgetter&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;object_id_field&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+    &lt;span class="n"&gt;generics&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="p"&gt;{}&lt;/span&gt;
+    &lt;span class="k"&gt;for&lt;/span&gt; &lt;span class="n"&gt;item&lt;/span&gt; &lt;span class="ow"&gt;in&lt;/span&gt; &lt;span class="n"&gt;queryset&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt;
+        &lt;span class="k"&gt;if&lt;/span&gt; &lt;span class="n"&gt;get_object_id&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;item&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt; &lt;span class="ow"&gt;is&lt;/span&gt; &lt;span class="ow"&gt;not&lt;/span&gt; &lt;span class="bp"&gt;None&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt;
+            &lt;span class="n"&gt;generics&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;setdefault&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;item&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;content_type_id&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="nb"&gt;set&lt;/span&gt;&lt;span class="p"&gt;())&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;add&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;get_object_id&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;item&lt;/span&gt;&lt;span class="p"&gt;))&lt;/span&gt;
+
+    &lt;span class="n"&gt;content_types&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;ContentType&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;objects&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;in_bulk&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;generics&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;keys&lt;/span&gt;&lt;span class="p"&gt;())&lt;/span&gt;
+
+    &lt;span class="n"&gt;relations&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="p"&gt;{}&lt;/span&gt;
+    &lt;span class="k"&gt;for&lt;/span&gt; &lt;span class="n"&gt;ct&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;fk_list&lt;/span&gt; &lt;span class="ow"&gt;in&lt;/span&gt; &lt;span class="n"&gt;generics&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;iteritems&lt;/span&gt;&lt;span class="p"&gt;():&lt;/span&gt;
+        &lt;span class="n"&gt;ct_model&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;content_types&lt;/span&gt;&lt;span class="p"&gt;[&lt;/span&gt;&lt;span class="n"&gt;ct&lt;/span&gt;&lt;span class="p"&gt;]&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;model_class&lt;/span&gt;&lt;span class="p"&gt;()&lt;/span&gt;
+        &lt;span class="n"&gt;relations&lt;/span&gt;&lt;span class="p"&gt;[&lt;/span&gt;&lt;span class="n"&gt;ct&lt;/span&gt;&lt;span class="p"&gt;]&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;ct_model&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;objects&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;in_bulk&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="nb"&gt;list&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;fk_list&lt;/span&gt;&lt;span class="p"&gt;))&lt;/span&gt;
+
+    &lt;span class="k"&gt;for&lt;/span&gt; &lt;span class="n"&gt;item&lt;/span&gt; &lt;span class="ow"&gt;in&lt;/span&gt; &lt;span class="n"&gt;queryset&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt;
+        &lt;span class="k"&gt;try&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt;
+            &lt;span class="n"&gt;cached_val&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;relations&lt;/span&gt;&lt;span class="p"&gt;[&lt;/span&gt;&lt;span class="n"&gt;item&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;content_type_id&lt;/span&gt;&lt;span class="p"&gt;][&lt;/span&gt;&lt;span class="n"&gt;get_object_id&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;item&lt;/span&gt;&lt;span class="p"&gt;)]&lt;/span&gt;
+        &lt;span class="k"&gt;except&lt;/span&gt; &lt;span class="ne"&gt;KeyError&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt;
+            &lt;span class="n"&gt;cached_val&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="bp"&gt;None&lt;/span&gt;
+        &lt;span class="nb"&gt;setattr&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;item&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="s1"&gt;&amp;#39;_&lt;/span&gt;&lt;span class="si"&gt;%s&lt;/span&gt;&lt;span class="s1"&gt;_cache&amp;#39;&lt;/span&gt; &lt;span class="o"&gt;%&lt;/span&gt; &lt;span class="n"&gt;content_type_fk&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;cached_val&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+    &lt;span class="k"&gt;return&lt;/span&gt; &lt;span class="n"&gt;queryset&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;view &lt;a href="https://gist.github.com/glasslion/6247958#file-generic_relations-py"&gt;gist: generic_relations.py&lt;/a&gt;&lt;/p&gt;</summary><category term="django"></category></entry><entry><title>无节操的nude.py识别哔～～～～图评测[NSFW]</title><link href="https://wing2south.com/post/58062234806/nude-py-nsfw/" rel="alternate"></link><published>2013-08-12T23:15:46+08:00</published><updated>2013-08-12T23:15:46+08:00</updated><author><name>Leonardo Zhou</name></author><id>tag:wing2south.com,2013-08-12:post/58062234806/nude-py-nsfw/</id><summary type="html">&lt;p&gt;发个无节操的东东： &lt;a href="https://github.com/hhatto/nude.py"&gt;nude.py&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;故名思意，nude.py就是一个Python实现的，判断一张图片是否是nude的library.&lt;/p&gt;
+&lt;p&gt;安装很简单：&lt;/p&gt;
+&lt;div class="highlight snippet"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="n"&gt;pip&lt;/span&gt; &lt;span class="n"&gt;install&lt;/span&gt; &lt;span class="n"&gt;nudepy&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;nude.py的图片识别/处理是依赖于&lt;code&gt;PIL&lt;/code&gt;或&lt;code&gt;Pillow&lt;/code&gt;的，由于&lt;code&gt;Pillow&lt;/code&gt;的安装过程比&lt;code&gt;PIL&lt;/code&gt;简单很多，强烈推荐用&lt;code&gt;Pillow&lt;/code&gt;。&lt;/p&gt;
+&lt;div class="highlight snippet"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="o"&gt;#&lt;/span&gt; &lt;span class="err"&gt;让&lt;/span&gt;&lt;span class="n"&gt;Pillow&lt;/span&gt;&lt;span class="err"&gt;支持&lt;/span&gt;&lt;span class="n"&gt;jpeg&lt;/span&gt;
+&lt;span class="o"&gt;#&lt;/span&gt; &lt;span class="err"&gt;若未安装&lt;/span&gt;&lt;span class="n"&gt;libjpeg&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;&lt;span class="err"&gt;用&lt;/span&gt;&lt;span class="n"&gt;Pillow&lt;/span&gt;&lt;span class="err"&gt;处理&lt;/span&gt;&lt;span class="n"&gt;JPEG&lt;/span&gt; &lt;span class="err"&gt;图片，会报&lt;/span&gt; &lt;span class="n"&gt;IOError&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt; &lt;span class="n"&gt;decoder&lt;/span&gt; &lt;span class="n"&gt;jpeg&lt;/span&gt; &lt;span class="k"&gt;not&lt;/span&gt; &lt;span class="n"&gt;available&lt;/span&gt;
+&lt;span class="o"&gt;#&lt;/span&gt; &lt;span class="err"&gt;此时要先&lt;/span&gt;&lt;span class="n"&gt;pip&lt;/span&gt; &lt;span class="n"&gt;uninstall&lt;/span&gt; &lt;span class="n"&gt;Pillow&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="err"&gt;安装好&lt;/span&gt; &lt;span class="n"&gt;libjpeg&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;&lt;span class="err"&gt;再重新&lt;/span&gt; &lt;span class="n"&gt;pip&lt;/span&gt; &lt;span class="n"&gt;instal&lt;/span&gt;  &lt;span class="n"&gt;Pillow&lt;/span&gt;
+&lt;span class="n"&gt;sudo&lt;/span&gt; &lt;span class="n"&gt;apt&lt;/span&gt;&lt;span class="o"&gt;-&lt;/span&gt;&lt;span class="k"&gt;get&lt;/span&gt; &lt;span class="n"&gt;install&lt;/span&gt; &lt;span class="n"&gt;libjpeg8&lt;/span&gt;&lt;span class="o"&gt;-&lt;/span&gt;&lt;span class="n"&gt;dev&lt;/span&gt; &lt;span class="n"&gt;pip&lt;/span&gt; &lt;span class="n"&gt;install&lt;/span&gt; &lt;span class="n"&gt;Pillow&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;nude的API很简单：&lt;/p&gt;
+&lt;div class="highlight snippet"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="kn"&gt;import&lt;/span&gt; &lt;span class="nn"&gt;nude&lt;/span&gt;
+&lt;span class="kn"&gt;from&lt;/span&gt; &lt;span class="nn"&gt;nude&lt;/span&gt; &lt;span class="kn"&gt;import&lt;/span&gt; &lt;span class="n"&gt;Nude&lt;/span&gt;
+
+&lt;span class="k"&gt;print&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;nude&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;is_nude&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="s1"&gt;&amp;#39;./nude.rb/spec/images/damita.jpg&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;))&lt;/span&gt;
+
+&lt;span class="n"&gt;n&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;Nude&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="s1"&gt;&amp;#39;./nude.rb/spec/images/damita.jpg&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+&lt;span class="n"&gt;n&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;parse&lt;/span&gt;&lt;span class="p"&gt;()&lt;/span&gt;
+&lt;span class="k"&gt;print&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="s2"&gt;&amp;quot;damita :&amp;quot;&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;n&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;result&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;n&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;inspect&lt;/span&gt;&lt;span class="p"&gt;())&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;实测结果：&lt;/p&gt;
+&lt;p&gt;先来几张吾王的:&lt;/p&gt;
+&lt;p&gt;&lt;img alt="nudepy1" src="http://ww4.sinaimg.cn/large/6c3391c1gw1eefnud176lj20dw0ijn01.jpg" /&gt;&lt;/p&gt;
+&lt;p&gt;&lt;img alt="nudepy2" src="http://ww2.sinaimg.cn/large/6c3391c1gw1eefnvfxncuj206904owel.jpg" /&gt;&lt;/p&gt;
+&lt;p&gt;&lt;img alt="nudepy3" src="http://ww3.sinaimg.cn/large/6c3391c1gw1eefnwh3jgjj207705e0so.jpg" /&gt;&lt;/p&gt;
+&lt;p&gt;&lt;img alt="nudepy4" src="http://ww3.sinaimg.cn/large/6c3391c1gw1eefo1rx5vyj20dm0i7wf4.jpg" /&gt;&lt;/p&gt;
+&lt;p&gt;&lt;img alt="nudepy5" src="http://ww3.sinaimg.cn/large/6c3391c1gw1eefo23dy0cj206b06oa9y.jpg" /&gt;&lt;/p&gt;
+&lt;p&gt;这几张~~玉照~~御照被nude.py毫无异议得判为nude，就连下面这张不怎么犯规的的，也没能幸免&lt;/p&gt;
+&lt;p&gt;&lt;img alt="nudepy6" src="http://ww3.sinaimg.cn/large/6c3391c1gw1eefo2ie38wj20c10go0w1.jpg" /&gt;&lt;/p&gt;
+&lt;p&gt;不过下面这种尺度的，就不会被错杀了。&lt;/p&gt;
+&lt;p&gt;&lt;img alt="nudepy7" src="http://ww2.sinaimg.cn/large/6c3391c1gw1eefo2vp9cfj20ao0e8t9c.jpg" /&gt;&lt;/p&gt;
+&lt;p&gt;这让我想起了当年让小朋友们闻风丧胆的绿坝娘。坝娘横行马勒戈壁，最后竟是栽在了这几只喵星人头上。&lt;/p&gt;
+&lt;p&gt;&lt;img alt="nudepy8" src="http://ww4.sinaimg.cn/large/6c3391c1gw1eefo39ta6kj209f0dcjs2.jpg" /&gt;&lt;/p&gt;
+&lt;p&gt;&lt;img alt="nudepy9" src="http://ww1.sinaimg.cn/large/6c3391c1gw1eefo5l9x5dj20dw0d8t9n.jpg" /&gt;&lt;/p&gt;
+&lt;p&gt;&lt;img alt="nudepy10" src="http://ww4.sinaimg.cn/large/6c3391c1gw1eefo5yg3n3j20dw0afacx.jpg" /&gt;&lt;/p&gt;
+&lt;p&gt;&lt;img alt="nudepy11" src="http://ww1.sinaimg.cn/large/6c3391c1gw1eefo67osgtj20dw0af755.jpg" /&gt;&lt;/p&gt;
+&lt;p&gt;&lt;img alt="nudepy12" src="http://ww2.sinaimg.cn/large/6c3391c1gw1eefo6exmwsj20dw0itgmn.jpg" /&gt;&lt;/p&gt;
+&lt;p&gt;Nude.py表现相当不错，这几只肥猫都没能蒙混过去。&lt;/p&gt;
+&lt;p&gt;来个2.5次元的，这只吾王的手办，也被判为Nude。&lt;/p&gt;
+&lt;p&gt;&lt;img alt="nudepy13" src="http://ww3.sinaimg.cn/large/6c3391c1gw1eefo6txssqj20cg0jg402.jpg" /&gt;&lt;/p&gt;
+&lt;p&gt;最后二次元的情况不容乐观，不知道是不是现在男孩子太可爱的缘故，这几张都没能识别出来&lt;/p&gt;
+&lt;p&gt;&lt;img alt="nudepy14" src="http://ww1.sinaimg.cn/large/6c3391c1gw1eefo77220gj20dw07tmxz.jpg" /&gt;&lt;/p&gt;
+&lt;p&gt;&lt;img alt="nudepy15" src="http://ww2.sinaimg.cn/large/6c3391c1gw1eefo7dr55kj20dw07taa4.jpg" /&gt;&lt;/p&gt;
+&lt;p&gt;&lt;img alt="nudepy16" src="http://ww1.sinaimg.cn/large/6c3391c1gw1eefo7o3feej20dw07tdge.jpg" /&gt;&lt;/p&gt;
+&lt;p&gt;就下面这两张识别出了：&lt;/p&gt;
+&lt;p&gt;&lt;img alt="nudepy17" src="http://ww2.sinaimg.cn/large/6c3391c1gw1eefo7vl7xqj207906yq3u.jpg" /&gt;&lt;/p&gt;
+&lt;p&gt;&lt;img alt="nudepy18" src="http://ww2.sinaimg.cn/large/6c3391c1gw1eefo83gaqaj20dw07tq3h.jpg" /&gt;&lt;/p&gt;
+&lt;p&gt;金闪闪惹不起，也识别出了：&lt;/p&gt;
+&lt;p&gt;&lt;img alt="nudepy19" src="http://ww1.sinaimg.cn/large/6c3391c1gw1eefo8le2x0j20dw07tjs0.jpg" /&gt;&lt;/p&gt;
+&lt;p&gt;在节操掉尽前，再多说一句，二次元的图片，如果用的是XXX的话，识别率蹭得就上去了。对看了本文心动手痒的诸位绅士来说，这是好事吧。&lt;/p&gt;</summary><category term="image-processing"></category></entry><entry><title>为什么在大多数编程语言里，位运算符的优先级(&amp; ^ |)低于比较运算符(== &gt; &lt; !=)</title><link href="https://wing2south.com/post/58039964836/" rel="alternate"></link><published>2013-08-12T14:48:06+08:00</published><updated>2013-08-12T14:48:06+08:00</updated><author><name>Leonardo Zhou</name></author><id>tag:wing2south.com,2013-08-12:post/58039964836/</id><summary type="html">&lt;p&gt;当初学C语言的时候，我也曾经思考过这个问题,感觉位运算符的优先级应该在移位运算符(&lt;code&gt;&amp;lt;&amp;lt; &amp;gt;&amp;gt;&lt;/code&gt; )的和不等于运算符( &lt;code&gt;&amp;lt; &amp;lt;= &amp;gt;= &amp;gt;&lt;/code&gt;)这两类运算符之间更合适。可惜当时没能不求甚解，以为K&amp;amp;R两位大师这么做自有其玄妙，吾等凡人功力商浅不必参悟透彻。多年后，在StackOverflow上碰巧看到这个问题 &lt;a href="http://programmers.stackexchange.com/questions/194635/why-do-bitwise-operators-have-lower-priority-than-comparisons"&gt;Why do bitwise operators have lower priority than comparisons?&lt;/a&gt;，终于解答了我的疑惑。&lt;/p&gt;
+&lt;p&gt;Dennis M. Ritchie 大神的解答(&lt;a href="http://cm.bell-labs.com/cm/cs/who/dmr/chist.html"&gt;The Development of the C Language&lt;/a&gt;):&lt;/p&gt;
+&lt;blockquote&gt;
+&lt;p&gt;&lt;strong&gt;Neonatal C&lt;/strong&gt;&lt;/p&gt;
+&lt;p&gt;Rapid changes continued after the language had been named, for example
+the introduction of the &amp;amp;&amp;amp; and || operators. In BCPL and B, the
+evaluation of expressions depends on context: within if and other
+conditional statements that compare an expression's value with zero,
+these languages place a special interpretation on the and (&amp;amp;) and or
+(|) operators. In ordinary contexts, they operate bitwise, but in the
+B statement&lt;/p&gt;
+&lt;p&gt;if (e1 &amp;amp; e2) ...&lt;/p&gt;
+&lt;p&gt;the compiler must evaluate e1 and if it is non-zero, evaluate e2, and
+if it too is non-zero, elaborate the statement dependent on the if.
+The requirement descends recursively on &amp;amp; and | operators within e1
+and e2. The short-circuit semantics of the Boolean operators in such
+`truth-value' context seemed desirable, but the overloading of the
+operators was difficult to explain and use. At the suggestion of Alan
+Snyder, I introduced the &amp;amp;&amp;amp; and || operators to make the mechanism
+more explicit. Their tardy introduction explains an infelicity of C's
+precedence rules. In B one writes&lt;/p&gt;
+&lt;p&gt;if (a==b &amp;amp; c) ...&lt;/p&gt;
+&lt;p&gt;to check whether a equals b and c is non-zero; in such a conditional
+expression it is better that &amp;amp; have lower precedence than ==. In
+converting from B to C, one wants to replace &amp;amp; by &amp;amp;&amp;amp; in such a
+statement; to make the conversion less painful, we decided to keep the
+precedence of the &amp;amp; operator the same relative to ==, and merely split
+the precedence of &amp;amp;&amp;amp; slightly from &amp;amp;. Today, it seems that it would
+have been preferable to move the relative precedences of &amp;amp; and ==, and
+thereby simplify a common C idiom: to test a masked value against
+another value, one must write&lt;/p&gt;
+&lt;p&gt;if ((a&amp;amp;mask) == b) ...&lt;/p&gt;
+&lt;p&gt;where the inner parentheses are required but easily forgotten.&lt;/p&gt;
+&lt;/blockquote&gt;
+&lt;p&gt;简而言之，是两位大神掉进了自己挖的坑里了。C语言的前身是B语言。B语言是没有逻辑运算符（&amp;amp;&amp;amp;
+||）的，是通过位运算充当逻辑运算的。大神在发明C时，沿用的B语言的一些~~陋习~~传统。由于C的流行，在C之后发明的大多数类C语言也纷纷掉这个坑里了。&lt;/p&gt;</summary></entry><entry><title>Access klipper clipboard on CLI under KDE4</title><link href="https://wing2south.com/post/57590894363/access-klipper-clipboard-on-cli-under-kde4/" rel="alternate"></link><published>2013-08-07T14:01:21+08:00</published><updated>2013-08-07T14:01:21+08:00</updated><author><name>Leonardo Zhou</name></author><id>tag:wing2south.com,2013-08-07:post/57590894363/access-klipper-clipboard-on-cli-under-kde4/</id><summary type="html">&lt;p&gt;&lt;a href="http://milianw.de/code-snippets/access-klipper-clipboard-on-cli-under-kde4"&gt;链接&lt;/a&gt;&lt;/p&gt;
+&lt;!-- PELICAN_BEGIN_SUMMARY --&gt;
+
+&lt;p&gt;一个让KDE的剪贴板工具Klipper可以在命令行中使用的脚本
+&lt;!-- PELICAN_END_SUMMARY --&gt;&lt;/p&gt;</summary><category term="linux"></category><category term="tool"></category></entry><entry><title>Chrome Logger</title><link href="https://wing2south.com/post/57590624308/chrome-logger/" rel="alternate"></link><published>2013-08-07T13:57:00+08:00</published><updated>2013-08-07T13:57:00+08:00</updated><author><name>Leonardo Zhou</name></author><id>tag:wing2south.com,2013-08-07:post/57590624308/chrome-logger/</id><summary type="html">&lt;p&gt;安装好Chrome Logger的&lt;a href="https://chrome.google.com/webstore/detail/chromephp/noaneddfkdjfnfdakjjmocngnfkfehhd"&gt;Chrome扩展&lt;/a&gt;，并在服务器端安装对应语言（目前支持&lt;a href="http://github.com/cookrn/chrome_logger"&gt;Ruby&lt;/a&gt;, &lt;a href="http://github.com/ccampbell/chromephp"&gt;PHP&lt;/a&gt;, &lt;a href="http://github.com/ccampbell/chromelogger-python"&gt;Python&lt;/a&gt;, &lt;a href="http://github.com/yannickcr/node-chromelogger"&gt;Node.js&lt;/a&gt;, &lt;a href="http://github.com/ChrisMissal/chromelogger"&gt;.NET&lt;/a&gt;）的Chrome Logger库后，就可以&lt;!-- PELICAN_BEGIN_SUMMARY --&gt;在服务器端用类似&lt;code&gt;console.(variable)&lt;/code&gt;的语句log变量，然后在Chrome Dev Tools上查看变量的实际值&lt;!-- PELICAN_END_SUMMARY --&gt;。&lt;/p&gt;
+&lt;p&gt;以&lt;code&gt;Django&lt;/code&gt;为例, 配置十分简单：&lt;/p&gt;
+&lt;div class="highlight snippet"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="c1"&gt;# django middleware&lt;/span&gt;
+&lt;span class="n"&gt;MIDDLEWARE_CLASSES&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="p"&gt;(&lt;/span&gt;
+    &lt;span class="s1"&gt;&amp;#39;chromelogger.DjangoMiddleware&amp;#39;&lt;/span&gt;
+&lt;span class="p"&gt;)&lt;/span&gt;
+
+&lt;span class="c1"&gt;# views&lt;/span&gt;
+&lt;span class="kn"&gt;import&lt;/span&gt; &lt;span class="nn"&gt;chromelogger&lt;/span&gt; &lt;span class="kn"&gt;as&lt;/span&gt; &lt;span class="nn"&gt;console&lt;/span&gt;
+&lt;span class="n"&gt;console&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;log&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="s1"&gt;&amp;#39;Hello console!&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+&lt;span class="n"&gt;console&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;get_header&lt;/span&gt;&lt;span class="p"&gt;()&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;gif 演示:&lt;/p&gt;
+&lt;p&gt;&lt;img alt="chrome-logger1" src="http://ww4.sinaimg.cn/large/6c3391c1gw1eef8b0wyixg20hq06vkcf.gif" /&gt;&lt;/p&gt;
+&lt;p&gt;&lt;img alt="chrome-logger2" src="http://ww3.sinaimg.cn/large/6c3391c1gw1eef8bi0n3bg2076055mz3.gif" /&gt;&lt;/p&gt;
+&lt;p&gt;&lt;a href="http://craig.is/writing/chrome-logger/"&gt;Project Homepage&lt;/a&gt;&lt;/p&gt;</summary><category term="tool"></category><category term="chrome"></category></entry><entry><title>A simple demo for tornado web socket</title><link href="https://wing2south.com/post/57321962100/tornado-web-socket/" rel="alternate"></link><published>2013-08-04T17:29:00+08:00</published><updated>2013-08-04T17:29:00+08:00</updated><author><name>Leonardo Zhou</name></author><id>tag:wing2south.com,2013-08-04:post/57321962100/tornado-web-socket/</id><summary type="html">&lt;p&gt;&lt;strong&gt;Python Code&lt;/strong&gt;&lt;/p&gt;
+&lt;p&gt;&lt;img alt="images/tornado_websocket_python.png" src="http://ww2.sinaimg.cn/large/6c3391c1gw1eecw1ldxobj20dw0dw3yx.jpg" /&gt;&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;JS Code&lt;/strong&gt;&lt;/p&gt;
+&lt;p&gt;&lt;img alt="images/tornado_websocket_js.png" src="http://ww2.sinaimg.cn/large/6c3391c1gw1eecw1x8oxlj20dw0dwmyk.jpg" /&gt;&lt;/p&gt;
+&lt;p&gt;Subclass &lt;code&gt;WebSocketHandler&lt;/code&gt; to create a basic WebSocket handler.&lt;/p&gt;
+&lt;p&gt;Override &lt;code&gt;on_message&lt;/code&gt; to handle incoming messages, and use
+&lt;code&gt;write_message&lt;/code&gt; to send messages to the client. You can also override
+&lt;code&gt;open&lt;/code&gt; and &lt;code&gt;on_close&lt;/code&gt; to handle opened and closed connections.&lt;/p&gt;
+&lt;p&gt;The only communication methods available to you are &lt;code&gt;write_message()&lt;/code&gt;,
+&lt;code&gt;ping()&lt;/code&gt;, and &lt;code&gt;close()&lt;/code&gt;. Likewise, your request handler class should
+implement &lt;code&gt;open()&lt;/code&gt; method rather than &lt;code&gt;get(&lt;/code&gt;) or &lt;code&gt;post()&lt;/code&gt;.&lt;/p&gt;
+&lt;p&gt;参考: &lt;a href="http://www.tornadoweb.org/en/stable/websocket.html"&gt;tornado.websocket — Bidirectional communication to the browser&lt;/a&gt;&lt;/p&gt;</summary><category term="tornado"></category></entry><entry><title>Crate.io 一个更快，更美，更好的 pypi</title><link href="https://wing2south.com/post/57251711095/crate-io-pypi/" rel="alternate"></link><published>2013-08-03T23:50:07+08:00</published><updated>2013-08-03T23:50:07+08:00</updated><author><name>Leonardo Zhou</name></author><id>tag:wing2south.com,2013-08-03:post/57251711095/crate-io-pypi/</id><summary type="html">&lt;p&gt;Python 程序员几乎每天都会用到 pypi，但 Pypi 的 web 界面实在称不上好看，好用。于是有一帮 Python 程序员坐不住了， 捣鼓出了 crate.io。&lt;/p&gt;
+&lt;p&gt;&lt;img alt="crate_io_sh1" src="http://ww3.sinaimg.cn/large/6c3391c1gw1eee901ulcvj20dw07ht8r.jpg" /&gt;&lt;/p&gt;
+&lt;p&gt;Crate.io 托管在上heroku上，访问速度比pypi快。&lt;/p&gt;
+&lt;p&gt;对比pypi和Crate.io对关键字"secure"的搜索结果，很明显 Crate.io 搜索结果更精准，排名也更合理。搜索结果左侧还提供了很多有用的filter。&lt;/p&gt;
+&lt;p&gt;&lt;img alt="crate_io_sh2" src="http://ww2.sinaimg.cn/large/6c3391c1gw1eee90brba2j20dw07k3zf.jpg" /&gt;&lt;/p&gt;
+&lt;p&gt;&lt;img alt="crate_io_sh3" src="http://ww3.sinaimg.cn/large/6c3391c1gw1eee946s4yjj20dw0iy75b.jpg" /&gt;&lt;/p&gt;
+&lt;p&gt;通过Package页面里的All Version 和  History，可以很方便得找到package历史版本。&lt;/p&gt;
+&lt;p&gt;&lt;img alt="crate_io_sh4" src="http://ww4.sinaimg.cn/large/6c3391c1gw1eee957d9prj20dw07kjrq.jpg" /&gt;&lt;/p&gt;
+&lt;p&gt;顺便吐槽下python.org的改版，一年都快都过去了，还没改好啊。&lt;/p&gt;
+&lt;p&gt;&lt;img alt="crate_io_sh5" src="http://ww3.sinaimg.cn/large/6c3391c1gw1eee94puzfmj20dw07k74o.jpg" /&gt;&lt;/p&gt;
+&lt;hr /&gt;
+&lt;p&gt;&lt;strong&gt;Updates:&lt;/strong&gt;&lt;/p&gt;
+&lt;p&gt;目前 crate.io 已经无法访问了， Pypi 的团队已经决定，将在 crate.io 的基础上打造一个全新的 pypi 。 目前还在开发中，预计在2014年上线。&lt;/p&gt;
+&lt;p&gt;新版 pypi 的 github 项目地址: &lt;a href="[https://github.com/pypa/warehouse]"&gt;warehouse&lt;/a&gt;&lt;/p&gt;</summary><category term="packaging"></category></entry><entry><title>Python的双层循环可以这么玩</title><link href="https://wing2south.com/post/55431622560/python/" rel="alternate"></link><published>2013-07-15T00:33:00+08:00</published><updated>2013-07-15T00:33:00+08:00</updated><author><name>Leonardo Zhou</name></author><id>tag:wing2south.com,2013-07-15:post/55431622560/python/</id><summary type="html">&lt;p&gt;&lt;img alt="images/python_vs_ java_loop.png" src="http://ww4.sinaimg.cn/large/6c3391c1gw1eecwl0oosej20dw0dw3z7.jpg" /&gt;&lt;/p&gt;
+&lt;p&gt;把对循环的控制，过滤拆分到一个generator中，在主循环中只存放对循环对象操作的逻辑，不仅是代码更加清晰，也避免了从内层循环退出的麻烦事&lt;/p&gt;
+&lt;p&gt;参考 &lt;a href="http://nedbatchelder.com/text/iter/iter.html"&gt;Loop like a native: while, for, iterators, generators (PyCon US
+2013 Talk)&lt;/a&gt;&lt;/p&gt;</summary></entry><entry><title>博客新logo的来历</title><link href="https://wing2south.com/post/54889473567/logo-leo/" rel="alternate"></link><published>2013-07-08T12:37:17+08:00</published><updated>2013-07-08T12:37:17+08:00</updated><author><name>Leonardo Zhou</name></author><id>tag:wing2south.com,2013-07-08:post/54889473567/logo-leo/</id><summary type="html">&lt;p&gt;&lt;img alt="images/logo-leo.png" src="http://ww4.sinaimg.cn/large/6c3391c1gw1eee679z81oj20dw0dw74w.jpg" /&gt;&lt;/p&gt;
+&lt;p&gt;博客新logo的来历:炼金术中代表狮子座(&lt;strong&gt;Leo&lt;/strong&gt;)的符号&lt;/p&gt;
+&lt;p&gt;------------------------分割线------------------------&lt;/p&gt;
+&lt;p&gt;本人不是狮子座的，也不是处女座了。&lt;/p&gt;</summary></entry><entry><title>Google Reader 魂兮归开</title><link href="https://wing2south.com/post/54883388320/google-reader/" rel="alternate"></link><published>2013-07-08T11:19:07+08:00</published><updated>2013-07-08T11:19:07+08:00</updated><author><name>Leonardo Zhou</name></author><id>tag:wing2south.com,2013-07-08:post/54883388320/google-reader/</id><summary type="html">&lt;p&gt;今天是Google Reader 头七，缅怀下遗容&lt;/p&gt;
+&lt;p&gt;&lt;img alt="images/google_reader_final.jpg" src="http://ww4.sinaimg.cn/large/6c3391c1gw1eecaaj89ayj20zk0l10xp.jpg" /&gt;&lt;/p&gt;</summary><category term="google"></category></entry><entry><title>找回Android Gmail客户端的删除邮件按钮</title><link href="https://wing2south.com/post/54327549900/android-gmail/" rel="alternate"></link><published>2013-07-01T15:10:00+08:00</published><updated>2013-07-01T15:10:00+08:00</updated><author><name>Leonardo Zhou</name></author><id>tag:wing2south.com,2013-07-01:post/54327549900/android-gmail/</id><summary type="html">&lt;p&gt;著名广告公司 &lt;code&gt;Google Inc.&lt;/code&gt; 几个月前在给Android的Gmail客户端加上了实用的通知栏操作，更好的扁平化UI时，也顺便把一直就看不顺眼的删除邮件按钮给隐藏掉了。&lt;/p&gt;
+&lt;p&gt;当然，以"不作恶"为准则的Google是不会把这个很多用户想要的按钮给直接砍掉的(不过，再过几个小时,Google Reader是铁定要被砍了 R.I.P), 他们只是把它藏得很深很深，以至于不用他们家的搜索服务的话，普通用户是压根找不回来的。&lt;/p&gt;
+&lt;p&gt;废话了这么多， 其实要把删除按钮找回来，就只要进 &lt;code&gt;菜单\&amp;gt;设置\&amp;gt;常规设置&lt;/code&gt; , 选那个言不达意的"归档和删除操作" 就行了。&lt;/p&gt;
+&lt;p&gt;&lt;img alt="gmail_android_delete1" src="http://ww1.sinaimg.cn/large/6c3391c1gw1eee9tfbec0j20dw03ndfs.jpg" /&gt;&lt;/p&gt;
+&lt;p&gt;&lt;img alt="gmail_android_delete2" src="http://ww4.sinaimg.cn/large/6c3391c1gw1eee9tpowatj20dw05u3yo.jpg" /&gt;&lt;/p&gt;
+&lt;p&gt;&lt;img alt="gmail_android_delete3" src="http://ww2.sinaimg.cn/large/6c3391c1gw1eee9u2uqxej20c40kumxy.jpg" /&gt;&lt;/p&gt;</summary><category term="android"></category><category term="google"></category></entry><entry><title>"2" &lt; 1 == True</title><link href="https://wing2south.com/post/53490665799/2-1-true/" rel="alternate"></link><published>2013-06-21T11:45:16+08:00</published><updated>2013-06-21T11:45:16+08:00</updated><author><name>Leonardo Zhou</name></author><id>tag:wing2south.com,2013-06-21:post/53490665799/2-1-true/</id><summary type="html">&lt;p&gt;&lt;img alt="python_compare" src="http://ww4.sinaimg.cn/large/6c3391c1gw1eef2607ezbj20dw0dwq3j.jpg" /&gt;&lt;/p&gt;
+&lt;h2&gt;Python 语言中， 不同类型对象之间的比较规则浅析&lt;/h2&gt;
+&lt;p&gt;今天为了捉一个臭虫耗废了近一个小时，最后发现是 &lt;code&gt;if foo &amp;gt; 1:&lt;/code&gt;这里的foo实际是字符串，导致&lt;code&gt;foo&lt;/code&gt;是&lt;code&gt;"0"&lt;/code&gt;时，&lt;code&gt;"0" &amp;gt; 1&lt;/code&gt;为真。于是便花了点时间研究了下&lt;code&gt;Python&lt;/code&gt;比较运算规则。&lt;/p&gt;
+&lt;p&gt;在&lt;code&gt;Python2&lt;/code&gt;中，比较运算遵循以下规则:&lt;/p&gt;
+&lt;ol&gt;
+&lt;li&gt;数字和数字按大小排序 （数字类型包括 int, float, long, complex,
+    &lt;strong&gt;bool&lt;/strong&gt;）&lt;/li&gt;
+&lt;li&gt;字符串按字符串按字典序排序(str, unicode)&lt;/li&gt;
+&lt;li&gt;数字类型和非数字类型比较，除None外,数字类型总是小于非数字类型。&lt;/li&gt;
+&lt;li&gt;两个非数字不同类型，按其类型名的字典与排序&lt;/li&gt;
+&lt;li&gt;第4点有一个特例，老式类的实例总是小于新式类&lt;/li&gt;
+&lt;li&gt;非数字/字符串类型的同一类型的不同实例的比较，如果类定义了&lt;code&gt;__cmp__()&lt;/code&gt;方法，则用该方法比较&lt;/li&gt;
+&lt;li&gt;同上，若类型没定义&lt;code&gt;__cmp__()&lt;/code&gt;方法， 则按实例在内存中的地址排序&lt;/li&gt;
+&lt;li&gt;None &amp;lt; None&lt;/li&gt;
+&lt;li&gt;3，4，5，7 是CPython的实现，不是Python语言自身的标准，参见[CPython
+    implementation detail][]。
+    Python语言只要求对非数字和字符串类型的不同对象的比较，总是不想等的，比较结果可以是任意的，但必须是一致的（即多次比较，结果恒定）。&lt;/li&gt;
+&lt;/ol&gt;
+&lt;p&gt;&lt;code&gt;Python3&lt;/code&gt;终于修了这个bug ( &lt;a href="http://docs.python.org/3.0/whatsnew/3.0.html?highlight=incomparable#ordering-comparisons"&gt;What’s New In Python 3.0&lt;/a&gt; ), 规则如下：&lt;/p&gt;
+&lt;ol&gt;
+&lt;li&gt;incomparable类型对象比较 \&amp;lt;, \&amp;lt;=, &gt;=, &gt; 会 raise &lt;code&gt;TypeError&lt;/code&gt;&lt;/li&gt;
+&lt;li&gt;incomparable类型对象比较 ！=, == 仍是合法的，但总为&lt;code&gt;False&lt;/code&gt;&lt;/li&gt;
+&lt;li&gt;&lt;code&gt;cmp()&lt;/code&gt;和&lt;code&gt;__cmp__()&lt;/code&gt;方法被弃置了，取而代之的是&lt;code&gt;__lt__()&lt;/code&gt;，&lt;code&gt;__eq__()&lt;/code&gt;，&lt;code&gt;__hash__()&lt;/code&gt;
+    ...&lt;/li&gt;
+&lt;/ol&gt;
+&lt;p&gt;&lt;code&gt;Python2&lt;/code&gt; 当初会设计这种比较规则，可能是为了便于对包含不同类型对象的容器排序。&lt;code&gt;list.sort()&lt;/code&gt;和&lt;code&gt;sorted()&lt;/code&gt;都仿照了C/C++里的&lt;code&gt;sort&lt;/code&gt;。&lt;code&gt;Python2.4&lt;/code&gt;后&lt;code&gt;sort&lt;/code&gt;使用&lt;code&gt;key&lt;/code&gt;来比较不同对象显然更Pythonic&lt;/p&gt;
+&lt;p&gt;更多例子，参见&lt;a href="http://wiki.python.org/moin/HowTo/Sorting/"&gt;Sorting Mini-HOW TO&lt;/a&gt;&lt;/p&gt;</summary><category term="fail"></category></entry><entry><title>The ignored decorater</title><link href="https://wing2south.com/post/52930265558/ignored-ignored-context/" rel="alternate"></link><published>2013-06-14T14:16:00+08:00</published><updated>2013-06-14T14:16:00+08:00</updated><author><name>Leonardo Zhou</name></author><id>tag:wing2south.com,2013-06-14:post/52930265558/ignored-ignored-context/</id><summary type="html">&lt;p&gt;&lt;img alt="images/ignore_decorator.png" src="http://ww3.sinaimg.cn/large/6c3391c1gw1eee6peof5tj20e80e83z5.jpg" /&gt;&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;@ignored&lt;/strong&gt;&lt;/p&gt;
+&lt;p&gt;再介绍一个关于Python的冷知识， 可以用 &lt;em&gt;@ignored&lt;/em&gt; context manager来显式地声明要忽略的无关紧要的异常&lt;/p&gt;
+&lt;p&gt;虽然 try except后再pass掉的做法更常见，
+但其含义比较隐晦。阅读者往往要把代码块读到最后才能知道那些错误是要忽略的。然后再回过来检查这些异常是否该被忽略。&lt;/p&gt;
+&lt;p&gt;可惜Python3.4+才支持&lt;/p&gt;
+&lt;hr /&gt;
+&lt;p&gt;&lt;strong&gt;Upates&lt;/strong&gt;:&lt;/p&gt;
+&lt;p&gt;最新的Python3.4 dev 又把这个 decorator 被改名为 @suppress&lt;/p&gt;</summary></entry><entry><title>小硬盘伤不起-将Vagrant移出系统盘的方法</title><link href="https://wing2south.com/post/44371306891/vagrant/" rel="alternate"></link><published>2013-03-02T22:55:00+08:00</published><updated>2013-03-02T22:55:00+08:00</updated><author><name>Leonardo Zhou</name></author><id>tag:wing2south.com,2013-03-02:post/44371306891/vagrant/</id><summary type="html">&lt;p&gt;最近用上vagrant，叹为神器的同时，它将所有文件全存系统盘的做法，也让我很伤脑筋。很多开发者系统盘用了SSD，相信为此头疼的不只是我一个。&lt;/p&gt;
+&lt;p&gt;&lt;img alt="images/vagrant-logo.jpg" src="http://ww3.sinaimg.cn/large/6c3391c1gw1eecwatrftaj2069069747.jpg" /&gt;&lt;/p&gt;
+&lt;p&gt;在万能的Google的加持下，最终还是找打了解决&lt;a href="http://emptysquare.net/blog/moving-virtualbox-and-vagrant-to-an-external-drive/"&gt;办法&lt;/a&gt;。&lt;/p&gt;
+&lt;h1&gt;更改VirtualBox虚拟机映像文件的位置&lt;/h1&gt;
+&lt;ul&gt;
+&lt;li&gt;打开 VirtualBox 程序，点击&lt;code&gt;管理/全局设定&lt;/code&gt;菜单项(Ctrl+G), 将&lt;code&gt;常规&lt;/code&gt;栏里的&lt;code&gt;默认虚拟电脑位置(M)&lt;/code&gt;改为其他磁盘下的路径&lt;/li&gt;
+&lt;li&gt;将原路径 &lt;code&gt;C:\Users\user_name\.VirtualBox\VirtualBox VMs&lt;/code&gt; 下的文件移动到新路径下。&lt;/li&gt;
+&lt;li&gt;重新启动VirtualBox程序，在虚拟机列表里，以前建立的虚拟机虽然都还在，但已经不可用了，将他们全部删除。&lt;/li&gt;
+&lt;li&gt;双击打开新路径各个文件夹里的vbox文件，将建立的虚拟机重新导入。&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;VirtualBox虚拟机映像文件是vagrant最多的一块, 上述方法应该能显著减少vagrant对系统盘的空间占用。只是如果添加的vagrant box数量比较多，其占用的空间也是很可观的，可以用下面的方法将其移出系统盘。&lt;/p&gt;
+&lt;h1&gt;更改vagrant配置文件的位置&lt;/h1&gt;
+&lt;ul&gt;
+&lt;li&gt;将 &lt;code&gt;C:\Users\user_name\.vagrant.d&lt;/code&gt; 移动到新的位置&lt;/li&gt;
+&lt;li&gt;新建环境变量&lt;code&gt;VAGRANT_HOME&lt;/code&gt;，并指向新路径&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;最后吐槽一句无关的，我第一次知道 vagrant 居然是在Pycon上，而不是RubyConf上&lt;/p&gt;</summary></entry><entry><title>小内存用户chrome的福音:一键管理所有扩展</title><link href="https://wing2south.com/post/43957200792/chrome/" rel="alternate"></link><published>2013-02-25T11:54:06+08:00</published><updated>2013-02-25T11:54:06+08:00</updated><author><name>Leonardo Zhou</name></author><id>tag:wing2south.com,2013-02-25:post/43957200792/chrome/</id><summary type="html">&lt;p&gt;&lt;img alt="images/chrome-ext-one-click.png" src="http://ww1.sinaimg.cn/large/6c3391c1gw1eee8ehms0ij20dw08paam.jpg" /&gt;&lt;/p&gt;
+&lt;p&gt;很多chrome扩展在用户点击它之前，不会干任何正事，却会占用大量内存。(为了解决这个问题，Google推出了根据事件触发的event page来替代一直跑在后台的background page。但目前使用的开发者并不多。大概是国外web开发者的电脑配置都很高吧)&lt;/p&gt;
+&lt;p&gt;使用One-Click Extensions Manager可以一键（实际上是两键啦）启用或关闭一个扩展。这样，很多使用频率不高的扩展平时都可以关了。在我公司那台跑着XP的老爷机上实测效果很明显。&lt;/p&gt;
+&lt;p&gt;而且与大多数chrome扩展不同，这个扩展不使用时，是不占用内存的，所以不用担心新加个扩展反而导致内存占用增多的情况。&lt;/p&gt;
+&lt;p&gt;如果你需要更多功能，下面两个扩展，可能也会有用:&lt;/p&gt;
+&lt;p&gt;&lt;a href="https://chrome.google.com/webstore/detail/extension-automation/ghopjgdkodchjclkkfdekhjfomdbakkb"&gt;Extension Automation&lt;/a&gt; 可以在不同的站点自动启用相关的扩展。&lt;/p&gt;
+&lt;p&gt;&lt;a href="https://chrome.google.com/webstore/detail/context/aalnjolghjkkogicompabhhbbkljnlka"&gt;Context&lt;/a&gt; 则可以将扩展分组，并一次启用或关闭多个扩展。&lt;/p&gt;
+&lt;p&gt;当然这两款扩展在提供更多更能时，其界面和配置也更加复杂，占用的资源也更多，还是One-Click Extensions Manager最为灵活。&lt;/p&gt;</summary><category term="chrome"></category><category term="tool"></category></entry><entry><title>Golang Weekly Go语言周报</title><link href="https://wing2south.com/post/43698273813/golang-weekly-go/" rel="alternate"></link><published>2013-02-22T11:48:26+08:00</published><updated>2013-02-22T11:48:26+08:00</updated><author><name>Leonardo Zhou</name></author><id>tag:wing2south.com,2013-02-22:post/43698273813/golang-weekly-go/</id><summary type="html">&lt;p&gt;&lt;img alt="images/golangweekly.png" src="http://ww3.sinaimg.cn/large/6c3391c1gw1eee7bxouwwj20dw0ijt9v.jpg" /&gt;&lt;/p&gt;
+&lt;p&gt;&lt;a href="http://golangweekly.com/archive/golang-weekly-issue-1.html"&gt;Golang Newsletter&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;介绍最新的Go语言和社区动态，每月大概有1-2封，对Go感兴趣的同学可以关注下&lt;/p&gt;</summary><category term="golang"></category></entry><entry><title>为 Github for Windows 设置代理</title><link href="https://wing2south.com/post/41087594715/github-for-windows/" rel="alternate"></link><published>2013-01-21T15:02:00+08:00</published><updated>2013-01-21T15:02:00+08:00</updated><author><name>Leonardo Zhou</name></author><id>tag:wing2south.com,2013-01-21:post/41087594715/github-for-windows/</id><summary type="html">&lt;p&gt;&lt;img alt="github_for_windows" src="http://ww2.sinaimg.cn/large/6c3391c1gw1eef82kp4coj20dw06l75k.jpg" /&gt;&lt;/p&gt;
+&lt;p&gt;今天在公司电脑上安装了Github for Windows， 但一直无法顺利登陆。由于公司电脑必须通过HTTP代理才能连上外网，而Github for Windows自己又不提供设置代理的界面，就只能求助Google了。&lt;/p&gt;
+&lt;p&gt;Google &lt;code&gt;github for windows proxy&lt;/code&gt; 到的前几个link都说要设置 &lt;code&gt;.gitconfig&lt;/code&gt;, 加入下列内容:&lt;/p&gt;
+&lt;div class="highlight snippet"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="k"&gt;[http]&lt;/span&gt;
+
+&lt;span class="na"&gt;proxy&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="s"&gt;host:port&lt;/span&gt;
+
+&lt;span class="k"&gt;[https]&lt;/span&gt;
+
+&lt;span class="na"&gt;proxy&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="s"&gt;host:port&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;很不幸，添加后依旧登陆不上。&lt;/p&gt;
+&lt;p&gt;之后又排除了Github for Windows 会自动适应IE的代理设置的可能。恰好，今天开始github成为了gfw敏感词，于是又怀疑到了方校长头上。&lt;/p&gt;
+&lt;p&gt;最后换了搜索关键词&lt;code&gt;github for windows login failed&lt;/code&gt;,才在这个链接里发现了正解 。&lt;a href="https://github.com/heroku/heroku/issues/319"&gt;&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;打开命令行，加入&lt;/p&gt;
+&lt;div class="highlight snippet"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="k"&gt;SET&lt;/span&gt; &lt;span class="n"&gt;HTTPS_PROXY&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="k"&gt;host&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt;&lt;span class="n"&gt;port&lt;/span&gt;
+
+&lt;span class="k"&gt;SET&lt;/span&gt; &lt;span class="n"&gt;HTTP_PROXY&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="k"&gt;host&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt;&lt;span class="n"&gt;port&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;就行了&lt;/p&gt;
+&lt;hr /&gt;
+&lt;p&gt;&lt;strong&gt;Updates:&lt;/strong&gt;&lt;/p&gt;
+&lt;p&gt;github for windows login failed 可能是由多种原因导致的， 本文提到的 bug以被修复，不再适用&lt;/p&gt;</summary><category term="github"></category></entry><entry><title>为什么有些网址中使用“utf8=✓”而不是“utf8=true”?</title><link href="https://wing2south.com/post/40769640185/utf8-utf8-true/" rel="alternate"></link><published>2013-01-18T01:11:00+08:00</published><updated>2013-01-18T01:11:00+08:00</updated><author><name>Leonardo Zhou</name></author><id>tag:wing2south.com,2013-01-18:post/40769640185/utf8-utf8-true/</id><summary type="html">&lt;p&gt;IE又中枪了。 老版本的IE浏览器 (&amp;lt; IE9) 提交 form 数据时，会尽可能地使用&lt;code&gt;Latin-1&lt;/code&gt;编码， 而不是群众喜闻乐见的 &lt;code&gt;utf-8&lt;/code&gt; 编码。&lt;/p&gt;
+&lt;p&gt;✓这个无法用&lt;code&gt;Latin-1&lt;/code&gt;编码的字符会迫使IE使用 &lt;code&gt;utf-8&lt;/code&gt;，从而简化了server端的实现。&lt;/p&gt;
+&lt;p&gt;同理，Ruby on Rails 是在 form 里插入 一个 值为 ☃ 的 hidden input field。&lt;/p&gt;
+&lt;p&gt;Stackexchange 上的问答: &lt;a href="http://programmers.stackexchange.com/questions/168751/is-the-use-of-utf8-preferable-to-utf8-true?newsletter=1&amp;amp;nlcode=44917%7c4830"&gt;Is the use of “utf8=✓” preferable to “utf8=true”?&lt;/a&gt;&lt;/p&gt;</summary><category term="冷知识"></category><category term="黑魔法"></category></entry><entry><title>用tmux提高工作效率 配置篇</title><link href="https://wing2south.com/post/40670260768/tmux/" rel="alternate"></link><published>2013-01-16T16:04:00+08:00</published><updated>2013-01-16T16:04:00+08:00</updated><author><name>Leonardo Zhou</name></author><id>tag:wing2south.com,2013-01-16:post/40670260768/tmux/</id><summary type="html">&lt;p&gt;&lt;em&gt;本文中很多内容都是摘自《tmux Productive Mouse-Free Development》一书。书的篇幅也不长，只有80多页，感兴趣的话，推荐一读。&lt;/em&gt; &lt;a href="http://book.douban.com/subject/10541112/"&gt;豆瓣&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;&lt;img alt="images/tmux_panels.png" src="http://ww3.sinaimg.cn/large/6c3391c1gw1ee6gmfvm4kj20dw08vdgp.jpg" /&gt;&lt;/p&gt;
+&lt;h3&gt;tmux配置文件的地址&lt;/h3&gt;
+&lt;p&gt;分两种：&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;/etc/tmux.conf 存储的是系统中所有用户的全局配置&lt;/li&gt;
+&lt;li&gt;~/.tmux.conf 存储的时用户个人的配置&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h3&gt;自定义快捷键&lt;/h3&gt;
+&lt;p&gt;tmux 一些默认的快捷键并不是很好用，下面罗列一些笔者觉得更人性化的自定义快捷键&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;
+&lt;p&gt;&lt;code&gt;set -g prefix C-a&lt;/code&gt; 将prefix键设为Ctrl+a&lt;br /&gt;
+    prefix键在tmux中使用十分频繁，几乎所有的都需要先按prefix键，而tmux默认的prefix键是C-b(Ctrl+b), Ctrl键和 b相隔甚远， 十分难按，非常坑爹。&lt;/p&gt;
+&lt;p&gt;很多tmux用户曾使用过GNU screen, screen的prefix键 C-a显然比C-b更加便捷，也减少了screen用户的学习成本&lt;/p&gt;
+&lt;p&gt;对于prefix键重度使用者，可以用键位映射工具，将CapsLock大小写锁定键映射成Ctrl键，C-a就更加容易按了。&lt;/p&gt;
+&lt;p&gt;添加了新的的prefix键位后，将C-b与prefix键解绑，留作他用。 &lt;code&gt;unbind C-b&lt;/code&gt; &lt;/p&gt;
+&lt;p&gt;&lt;code&gt;source-file ~/.tmux.conf&lt;/code&gt; 之后，更改的配置才会生效&lt;/p&gt;
+&lt;p&gt;&lt;code&gt;bind C-a send-prefix&lt;/code&gt; 由于prefix按键被tmux拦截，Emacs,VIm等软件可能会不能正常工作，这个设置可以让用户连按两次C-a,来向第三方软件发送prefix按键&lt;/p&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;p&gt;&lt;code&gt;bind r source-file ~/.tmux.conf&lt;/code&gt; 按r可以让更改后的tmux设置生效&lt;/p&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;p&gt;&lt;code&gt;bind | split-window -h&lt;/code&gt; &lt;/p&gt;
+&lt;p&gt;&lt;code&gt;bind - split-window -v&lt;/code&gt;&lt;/p&gt;
+&lt;p&gt;纵向和横向切分面板。切分面板本来是tmux的一大杀器，但默认的命令太过繁琐，而且|和-更直观得表明了切割方向&lt;/p&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;p&gt;&lt;code&gt;bind h select-pane -L&lt;/code&gt;&lt;/p&gt;
+&lt;p&gt;&lt;code&gt;bind j select-pane -D&lt;/code&gt;&lt;/p&gt;
+&lt;p&gt;&lt;code&gt;bind k select-pane -U&lt;/code&gt;&lt;/p&gt;
+&lt;p&gt;&lt;code&gt;bind l select-pane -R&lt;/code&gt;&lt;/p&gt;
+&lt;p&gt;在不同面板间切换。也是比较常用的，用LDUR表示方向在按键时很不方便，改为vim风格的。&lt;/p&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;p&gt;&lt;code&gt;bind -r H resize-pane -L 5&lt;/code&gt;&lt;/p&gt;
+&lt;p&gt;&lt;code&gt;bind -r J resize-pane -D 5&lt;/code&gt;&lt;/p&gt;
+&lt;p&gt;&lt;code&gt;bind -r K resize-pane -U 5&lt;/code&gt;&lt;/p&gt;
+&lt;p&gt;&lt;code&gt;bind -r L resize-pane -R 5&lt;/code&gt;&lt;/p&gt;
+&lt;p&gt;改变面板的大小。四个方向还是使用vim风格的方向键，不过这里用的是大写。&lt;/p&gt;
+&lt;p&gt;这里-r的作用是，如果要窗口向上扩展一大段空间，按了prefix键后，连着按H就行了。 &lt;/p&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;p&gt;&lt;code&gt;bind -r C-h select-window -t :-&lt;/code&gt;
+    &lt;code&gt;bind -r C-l select-window -t :+&lt;/code&gt;
+    切换窗口。这里的按键和切换面板的对应。&lt;/p&gt;
+&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h3&gt;基本的界面设置&lt;/h3&gt;
+&lt;ul&gt;
+&lt;li&gt;
+&lt;p&gt;&lt;code&gt;set -sg escape-time 1&lt;/code&gt; tmux，会有一个延时，以方便用户输入按键组合，但默认的有点长，1秒钟足矣&lt;/p&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;p&gt;&lt;code&gt;set -g base-index 1&lt;/code&gt; 有些用户习惯让窗口的编号从1开始（默认是0）&lt;/p&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;p&gt;&lt;code&gt;setw -g pane-base-index 1&lt;/code&gt; 类似的可以设置面板的开始编号&lt;/p&gt;
+&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h3&gt;鼠标相关的设置&lt;/h3&gt;
+&lt;ul&gt;
+&lt;li&gt;
+&lt;p&gt;&lt;code&gt;setw -g mode-mouse on&lt;/code&gt;&lt;/p&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;p&gt;&lt;code&gt;set -g mouse-select-pane on&lt;/code&gt;&lt;/p&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;p&gt;&lt;code&gt;set -g mouse-resize-pane on&lt;/code&gt;&lt;/p&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;p&gt;&lt;code&gt;set -g mouse-select-window on&lt;/code&gt;&lt;/p&gt;
+&lt;p&gt;即使在命令行下，鼠标有时也是能提高工作效率的&lt;/p&gt;
+&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h3&gt;色彩设置&lt;/h3&gt;
+&lt;ul&gt;
+&lt;li&gt;set -g default-terminal "screen-256color" 让tmux支持256色&lt;/li&gt;
+&lt;li&gt;
+&lt;p&gt;设置底部状态条的颜色&lt;/p&gt;
+&lt;p&gt;&lt;code&gt;set -g status-fg white&lt;/code&gt;&lt;/p&gt;
+&lt;p&gt;&lt;code&gt;set -g status-bg black&lt;/code&gt;&lt;/p&gt;
+&lt;p&gt;&lt;code&gt;setw -g window-status-fg cyan&lt;/code&gt;&lt;/p&gt;
+&lt;p&gt;&lt;code&gt;setw -g window-status-bg default&lt;/code&gt;&lt;/p&gt;
+&lt;p&gt;&lt;code&gt;setw -g window-status-attr dim&lt;/code&gt;&lt;/p&gt;
+&lt;p&gt;&lt;code&gt;setw -g window-status-current-fg white&lt;/code&gt;&lt;/p&gt;
+&lt;p&gt;&lt;code&gt;setw -g window-status-current-bg red&lt;/code&gt;&lt;/p&gt;
+&lt;p&gt;&lt;code&gt;setw -g window-status-current-attr bright&lt;/code&gt;&lt;/p&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;p&gt;设置面板间分割线的颜色&lt;/p&gt;
+&lt;p&gt;&lt;code&gt;set -g pane-border-fg green&lt;/code&gt;&lt;/p&gt;
+&lt;p&gt;&lt;code&gt;set -g pane-border-bg black&lt;/code&gt;&lt;/p&gt;
+&lt;p&gt;&lt;code&gt;set -g pane-active-border-fg red&lt;/code&gt;&lt;/p&gt;
+&lt;p&gt;&lt;code&gt;set -g pane-active-border-bg black&lt;/code&gt;&lt;/p&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;p&gt;设置命令出错后提醒的颜色&lt;/p&gt;
+&lt;p&gt;&lt;code&gt;set -g message-fg white&lt;/code&gt;
+&lt;code&gt;set -g message-bg black&lt;/code&gt;
+&lt;code&gt;set -g message-attr bright&lt;/code&gt;&lt;/p&gt;
+&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h3&gt;状态条设置&lt;/h3&gt;
+&lt;ul&gt;
+&lt;li&gt;
+&lt;p&gt;&lt;code&gt;set -g status-left-length 40&lt;/code&gt;&lt;/p&gt;
+&lt;p&gt;&lt;code&gt;set -g status-left "#[fg=green]Session: #S #[fg=yellow]#I #[fg=cyan]#P"&lt;/code&gt; 状态栏左侧的长度和文字颜色&lt;/p&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;p&gt;&lt;code&gt;set -g status-right "#[fg=cyan]%d %b %R"&lt;/code&gt; 右侧&lt;/p&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;p&gt;&lt;code&gt;set -g status-utf8 on&lt;/code&gt;&lt;/p&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;p&gt;&lt;code&gt;set -g status-interval 60&lt;/code&gt; 每60秒更新一次显示的时间。默认是15秒&lt;/p&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;p&gt;&lt;code&gt;setw -g monitor-activity on&lt;/code&gt;&lt;/p&gt;
+&lt;p&gt;&lt;code&gt;set -g visual-activity on&lt;/code&gt;&lt;/p&gt;
+&lt;p&gt;非当前窗口中有事件发生时（比如一个耗时的命令跑完了），状态栏上会有高亮提醒&lt;/p&gt;
+&lt;/li&gt;
+&lt;/ul&gt;</summary><category term="cli"></category><category term="tool"></category></entry><entry><title>Windows下极简的番茄工作法工具——Tomighty</title><link href="https://wing2south.com/post/39626055614/windows-tomighty/" rel="alternate"></link><published>2013-01-04T11:48:00+08:00</published><updated>2013-01-04T11:48:00+08:00</updated><author><name>Leonardo Zhou</name></author><id>tag:wing2south.com,2013-01-04:post/39626055614/windows-tomighty/</id><summary type="html">&lt;p&gt;这款软件，除了支持修改番茄工作法的各个流程的时间长度和声音提醒外，会在工具栏的右下角通过一个图标显示当前工作流的剩余时间。
+相比之下，另一款也还不错的&lt;a href="http://www.focusboosterapp.com"&gt;focus booster&lt;/a&gt;占据的空间就大得多了。&lt;/p&gt;
+&lt;p&gt;Tomighty:&lt;/p&gt;
+&lt;blockquote&gt;
+&lt;p&gt;&lt;img alt="images/tomighty_screenshot.png" src="http://ww2.sinaimg.cn/large/6c3391c1gw1ee6g7jels1j2066051dfv.jpg" /&gt;&lt;/p&gt;
+&lt;/blockquote&gt;
+&lt;p&gt;focus booster:&lt;/p&gt;
+&lt;blockquote&gt;
+&lt;p&gt;&lt;img alt="images/focusbooster_screenshot.jpg" src="http://ww2.sinaimg.cn/large/6c3391c1gw1ee6g6wac6jj20dw02eq34.jpg" /&gt;&lt;/p&gt;
+&lt;/blockquote&gt;
+&lt;p&gt;Tomighty是一个单可执行文件，比很多基于Adobe Air的promodoro应用要小巧玲珑很多。&lt;/p&gt;
+&lt;p&gt;值得一提的是Tomighty这个项目是开源的，而且跨平台。 官网 &lt;a href="http://www.tomighty.org"&gt;http://www.tomighty.org&lt;/a&gt;&lt;/p&gt;</summary><category term="windows"></category><category term="tool"></category></entry></feed>

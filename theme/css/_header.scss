@@ -1,0 +1,74 @@
+
+.site-header {
+    margin-bottom: 36px;
+    text-align: center;
+}
+.site-branding {
+    margin: 0 auto;
+    padding: 12px 0 24px;
+}
+.site-logo {
+    margin-bottom: 2px;
+}
+.site-logo a:hover {
+    opacity: 0.8;
+    transition: opacity .15s ease-in-out;
+}
+.site-logo img {
+    zoom: 66%;
+}
+.border-radius .site-logo img {
+    border-radius: 50%;
+}
+.site-title {
+    font-size: 30px;
+    font-weight: 700;
+    line-height: 38px;
+    margin-bottom: 4px;
+    margin-top: 6px;
+}
+.site-title a:hover {
+    color: #555;
+}
+.site-description {
+    color: #555;
+    font-size: 15px;
+}
+.header-image {
+    margin: 36px -15px 0 -15px;
+    max-height: 350px;
+    overflow: hidden;
+}
+.header-image img {
+    width: 140%;
+    margin-left: -20%;
+    max-width: 140%;
+}
+
+@media screen and (min-width: 780px) {
+    .site-branding {
+        padding: 30px 0 36px;
+    }
+    .site-logo img {
+        zoom: 1;
+    }
+    .site-header {
+        margin-bottom: 60px;
+    }
+    .site-title {
+        font-size: 43px;
+        line-height: 50px;
+        margin-bottom: 8px;
+    }
+    .site-description {
+        font-size: 18px;
+    }
+    .header-image {
+        margin: 36px 0 0 0;
+    }
+    .header-image img {
+        width: 100%;
+        margin-left: 0;
+        max-width: 100%;
+    }
+}

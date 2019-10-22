@@ -1,0 +1,218 @@
+
+/* Base */
+.content-area,
+.sidebar-area {
+    margin-bottom: 60px;
+}
+.hentry {
+    background: url("../images/line.png") no-repeat center bottom;
+    margin-bottom: 48px;
+    padding-bottom: 24px;
+}
+.has-sidebar .hentry {
+    background: url("../images/line.png") no-repeat left bottom;
+}
+.single .hentry,
+.page .hentry {
+    background: none;
+    margin-bottom: 60px;
+    padding-bottom: 0;
+}
+
+/* Entry Header */
+.entry-header {
+    margin-bottom: 24px;
+}
+.entry-title {
+    font-size: 26px;
+    line-height: 34px;
+    margin-bottom: 8px;
+    text-align: center;
+}
+.entry-title a {
+    color: #111;
+}
+.entry-title a:hover {
+    color: #555;
+}
+.entry-meta {
+    color: #777;
+    font-size: 14px;
+    text-align: center;
+    margin-bottom: 24px;
+
+    a {
+        border-bottom: solid 1px #ccc;
+        color: #777;
+
+        &:hover{
+            color: #333;
+            text-decoration: none;
+        }
+    }
+}
+
+.post-thumbnail {
+    margin-bottom: 24px;
+    text-align: center;
+}
+.post-thumbnail a:hover {
+    opacity: 0.8;
+    transition: opacity .15s ease-in-out;
+}
+.has-sidebar .entry-title,
+.has-sidebar .entry-meta,
+.has-sidebar .post-thumbnail {
+    text-align: left;
+}
+.entry-content {
+    margin-bottom: 24px;
+    font-family: Lato, #{$font-hei};
+}
+@media screen and (min-width: 780px) {
+    .entry-title {
+        font-size: 34px;
+        line-height: 42px;
+        margin-bottom: 12px;
+    }
+    .entry-meta {
+        font-size: 16px;
+    }
+}
+@media screen and (min-width: 960px) {
+    .no-sidebar .post-thumbnail {
+        margin-left: -50px;
+        margin-right: -50px;
+    }
+}
+
+/* Sticky Post */
+.no-sidebar .sticky .entry-title:before {
+    color: #999;
+    content: '\f308';
+    display: block;
+    -webkit-font-smoothing: antialiased;
+    font: normal 32px/1 Genericons;
+    margin-bottom: 8px;
+    text-align: center;
+}
+.has-sidebar .sticky .entry-title:after {
+    color: #999;
+    content: '\f308';
+    display: inline-block;
+    -webkit-font-smoothing: antialiased;
+    font: normal 26px/1 Genericons;
+    margin-left: 5px;
+    vertical-align: text-top;
+}
+
+/* Entry Summary */
+.entry-summary {
+    margin-bottom: 24px;
+    p {
+        font-family: Lato, #{$font-hei};
+    }
+}
+
+.continue-reading {
+    text-transform: uppercase;
+}
+
+/* Page Links */
+.page-links {
+    clear: both;
+    margin: 0 0 24px;
+}
+
+/* Archive */
+.page-header {
+    margin-bottom: 36px;
+}
+.page-title {
+    font-size: 22px;
+    line-height: 30px;
+}
+
+/* Hide Title */
+.format-aside .entry-title,
+.format-image .entry-title,
+.format-link .entry-title,
+.format-quote .entry-title {
+    display: none;
+}
+
+/* Link */
+.format-link .entry-content a {
+    font-style: italic;
+}
+
+/* Quote */
+.format-quote .entry-content blockquote {
+    font-size: 20px;
+    line-height: 32px;
+}
+.format-quote .entry-content cite {
+    display: inline-block;
+    margin-top: 12px;
+}
+@media screen and (min-width: 780px) {
+    .format-quote .entry-content blockquote {
+        font-size: 24px;
+        line-height: 36px;
+    }
+}
+
+/* Status */
+.format-status .entry-content {
+    font-size: 18px;
+    line-height: 28px;
+}
+@media screen and (min-width: 780px) {
+    .format-status .entry-content {
+        font-size: 19px;
+        line-height: 32px;
+    }
+}
+
+/* Gallery */
+.gallery {
+    display: table;
+    margin: 0 auto 24px;
+}
+.gallery dl {
+    float: left;
+}
+.gallery dt {
+    margin-bottom: 10px;
+    margin-right: 10px;
+}
+.gallery .gallery-caption {
+    display: none;
+}
+.gallery-columns-1 .gallery-item {
+    width: 100%;
+}
+.gallery-columns-2 .gallery-item {
+    width: 50%;
+}
+.gallery-columns-3 .gallery-item {
+    width: 33%;
+}
+.gallery-columns-4 .gallery-item {
+    width: 25%;
+}
+.gallery-columns-5 .gallery-item {
+    width: 20%;
+}
+.gallery-columns-6 .gallery-item {
+    width: 16.6%;
+}
+.gallery-columns-7 .gallery-item {
+    width: 14.2%;
+}
+.gallery-columns-8 .gallery-item {
+    width: 12.5%;
+}
+.gallery-columns-9 .gallery-item {
+    width: 11.1%;
+}

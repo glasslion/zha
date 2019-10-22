@@ -1,0 +1,13 @@
+@import 'pygment';
+
+.highlight pre {
+    background: transparent !important;
+    border: 0;
+}
+
+.highlight {
+    -webkit-border-radius: 4px;
+    -moz-border-radius: 4px;
+    border-radius: 4px;
+    border: 1px solid #ddd;
+}

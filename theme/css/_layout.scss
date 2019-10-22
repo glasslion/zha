@@ -1,0 +1,75 @@
+
+.site {
+    margin: 0 auto;
+    padding: 0 15px;
+}
+.site-branding,
+.site-content,
+.footer-widget,
+.site-info {
+    max-width: 700px;
+    margin: 0 auto;
+}
+
+@media screen and (min-width: 960px) {
+    .site {
+        max-width: 1040px;
+    }
+    .has-sidebar .site-content,
+    .footer-widget {
+        max-width: 900px;
+        margin: 0 auto;
+    }
+    .has-sidebar .content-area {
+        border-right: solid 1px #ddd;
+        float: left;
+        margin-right: 44px;
+        padding-right: 44px;
+        width: 570px;
+    }
+    .has-sidebar .sidebar-area {
+        float: left;
+        width: 240px;
+    }
+    .footer-widget .widget-area {
+        float: left;
+        width: 240px;
+    }
+    .footer-4 .footer-widget .widget-area {
+        margin-left: 6%;
+        width: 20.5%;
+    }
+    .footer-3 .footer-widget .widget-area {
+        margin-left: 8%;
+        width: 28%;
+    }
+    .footer-2 .footer-widget .widget-area {
+        margin-left: 8%;
+        width: 46%;
+    }
+    .footer-1 .footer-widget .widget-area {
+        width: 100%;
+    }
+    .footer-widget .widget-area:first-child {
+        margin-left: 0;
+    }
+}
+
+@media screen and (min-width: 1180px) {
+    .site {
+        max-width: 1260px;
+    }
+    .has-sidebar .site-content,
+    .has-sidebar .footer-widget,
+    .page-template-nosidebar-php .footer-widget {
+        max-width: 1120px;
+    }
+    .has-sidebar .content-area {
+        margin-right: 59px;
+        padding-right: 59px;
+        width: 700px;
+    }
+    .has-sidebar .sidebar-area {
+        width: 300px;
+    }
+}

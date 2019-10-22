@@ -1,0 +1,57 @@
+/* Jetpack Infinite Scroll */
+.infinite-scroll .paging-navigation {
+    display: none;
+}
+.infinite-loader {
+    margin: 0 auto;
+    width: 25px;
+}
+#infinite-handle {
+    text-align:center;
+}
+#infinite-handle span {
+    background: #333;
+    border-radius: 0;
+    color: #eee;
+    cursor: pointer;
+    font-size: 15px;
+    padding: 9px 24px 8px;
+    text-align: center;
+}
+#infinite-handle span:hover {
+    background: #666;
+}
+@media screen and (min-width: 780px) {
+    #infinite-handle span {
+        font-size: 16px;
+    }
+}
+
+/* Jetpack Widgets */
+#subscribe-email input {
+    margin-top: 0;
+    max-width: 300px;
+    padding: 8px;
+    width: 100%;
+}
+.widget_jetpack_display_posts_widget h4 {
+    margin-bottom: 12px;
+}
+.widget_jetpack_display_posts_widget img {
+    margin-bottom: 12px;
+}
+.widget_jetpack_display_posts_widget p {
+    line-height: 22px;
+}
+.grofile-thumbnail {
+    max-width: 150px;
+}
+
+/* Contact Form 7 */
+.wpcf7-list-item-label {
+    font-size: 94%;
+}
+.wpcf7-file {
+    border: solid 1px #ddd;
+    padding: 5px;
+}

@@ -1,0 +1,144 @@
+
+/* Base */
+.widget {
+    color: #555;
+    font-size: 14px;
+    line-height: 22px;
+    margin-bottom: 48px;
+}
+@media screen and (min-width: 780px) {
+    .widget {
+        font-size: 15px;
+        line-height: 24px;
+    }
+}
+
+/* Heading */
+.widget h1 {
+    font-size: 16px;
+    margin-bottom: 12px;
+}
+@media screen and (min-width: 780px) {
+    .widget h1 {
+        font-size: 17px;
+    }
+}
+
+/* List */
+.widget ul {
+    list-style: none;
+    margin-left: 1.5em;
+}
+.widget ul li {
+    line-height: 20px;
+    padding-bottom: 2px;
+    padding-top: 2px;
+}
+.widget ul li li:last-child {
+    padding-bottom: 0;
+}
+.widget ul li:before {
+    content: '\f428';
+    display: inline-block;
+    -webkit-font-smoothing: antialiased;
+    font: normal 16px/1 Genericons;
+    height: 0;
+    left: -1.2em;
+    position: relative;
+    top: 0.21em;
+    width: 0;
+}
+@media screen and (min-width: 780px) {
+    .widget ul li {
+        line-height: 22px;
+    }
+}
+
+/* Meta */
+.widget_recent_entries .post-date,
+.widget_rss .rss-date {
+    color: #999;
+    display: block;
+    font-size: 13px;
+}
+.widget_rss .rssSummary,
+.widget_rss cite {
+    color: #777;
+    font-size: 13px;
+}
+@media screen and (min-width: 780px) {
+    .widget_recent_entries .post-date,
+    .widget_rss .rss-date {
+        font-size: 14px;
+    }
+    .widget_rss .rssSummary,
+    .widget_rss cite {
+        font-size: 14px;
+    }
+}
+
+/* Text */
+.textwidget a {
+    text-decoration: underline;
+}
+
+/* Search */
+.widget_search input[type="search"] {
+    max-width: 300px;
+    width: 100%;
+}
+.widget_search .search-submit {
+    display: none;
+}
+
+/* Recent Comments */
+.widget_recent_comments a {
+    text-decoration: underline;
+}
+
+/* Calendar */
+.widget_calendar table {
+    max-width: 300px;
+    line-height: 28px;
+}
+.widget_calendar td,
+.widget_calendar th {
+    text-align: center;
+}
+.widget_calendar thead th {
+    border-bottom: double 3px #ddd;
+    border-top: solid 1px #ddd;
+    padding: 3px 0;
+}
+.widget_calendar tbody td {
+    border-bottom: solid 1px #eee;
+}
+.widget_calendar tbody td a {
+    background-color: #eee;
+    display: block;
+    text-decoration: underline;
+}
+.widget_calendar tbody td a:hover {
+    background-color: #f6f6f6;
+}
+.widget_calendar tfoot td {
+    padding-top: 8px; 
+}
+.widget_calendar tfoot td a {
+    text-decoration: underline;
+}
+.widget_calendar tfoot td#prev {
+    text-align: left;
+}
+.widget_calendar tfoot td#next {
+    text-align: right;
+}
+
+
+/* =Tag Cloud
+----------------------------------------------- */
+
+#tagcloud {
+    width: 600px;
+    height: 600px;   
+}

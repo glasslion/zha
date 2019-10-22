@@ -1,0 +1,70 @@
+
+/* Post Navigation */
+.post-navigation h2 {
+    color: #777;
+    font-size: 14px;
+    text-transform: uppercase;
+}
+.post-navigation a {
+    text-decoration: underline;
+}
+.post-navigation .nav-previous {
+    margin-bottom: 24px;
+}
+.post-navigation .nav-next {
+    text-align: right;
+    margin-bottom: 24px;
+}
+@media screen and (min-width: 780px) {
+    .post-navigation h2 {
+        font-size: 15px;
+    }
+    .post-navigation {
+        overflow: hidden;
+    }
+    .post-navigation .nav-previous {
+        float: left;
+        width: 45%;
+    }
+    .post-navigation .nav-next {
+        float: right;
+        width: 45%; 
+    }
+}
+
+/* Paging Navigation */
+.paging-navigation {
+    overflow: hidden;
+    text-transform: uppercase;
+}
+.paging-navigation a {
+    text-decoration: underline;
+}
+.paging-navigation .nav-previous {
+    float: left;
+    width: 50%;
+}
+.paging-navigation .nav-next {
+    float: right;
+    text-align: right;
+    width: 50%;
+}
+
+/* Comment Navigation */
+.comment-navigation {
+    margin-bottom: 24px;
+    overflow: hidden;
+    text-transform: uppercase;
+}
+.comment-navigation a {
+    text-decoration: underline;
+}
+.comment-navigation .nav-previous {
+    float: left;
+    width: 50%;
+}
+.comment-navigation .nav-next {
+    float: right;
+    text-align: right;
+    width: 50%;
+}

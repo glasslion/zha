@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom"><title>翼图南</title><link href="https://wing2south.com/" rel="alternate"></link><link href="https://wing2south.com/feeds/code.atom.xml" rel="self"></link><id>https://wing2south.com/</id><updated>2013-08-12T14:48:06+08:00</updated><entry><title>为什么在大多数编程语言里，位运算符的优先级(&amp; ^ |)低于比较运算符(== &gt; &lt; !=)</title><link href="https://wing2south.com/post/58039964836/" rel="alternate"></link><published>2013-08-12T14:48:06+08:00</published><updated>2013-08-12T14:48:06+08:00</updated><author><name>Leonardo Zhou</name></author><id>tag:wing2south.com,2013-08-12:post/58039964836/</id><summary type="html">&lt;p&gt;当初学C语言的时候，我也曾经思考过这个问题,感觉位运算符的优先级应该在移位运算符(&lt;code&gt;&amp;lt;&amp;lt; &amp;gt;&amp;gt;&lt;/code&gt; )的和不等于运算符( &lt;code&gt;&amp;lt; &amp;lt;= &amp;gt;= &amp;gt;&lt;/code&gt;)这两类运算符之间更合适。可惜当时没能不求甚解，以为K&amp;amp;R两位大师这么做自有其玄妙，吾等凡人功力商浅不必参悟透彻。多年后，在StackOverflow上碰巧看到这个问题 &lt;a href="http://programmers.stackexchange.com/questions/194635/why-do-bitwise-operators-have-lower-priority-than-comparisons"&gt;Why do bitwise operators have lower priority than comparisons?&lt;/a&gt;，终于解答了我的疑惑。&lt;/p&gt;
+&lt;p&gt;Dennis M. Ritchie 大神的解答(&lt;a href="http://cm.bell-labs.com/cm/cs/who/dmr/chist.html"&gt;The Development of the C Language&lt;/a&gt;):&lt;/p&gt;
+&lt;blockquote&gt;
+&lt;p&gt;&lt;strong&gt;Neonatal C&lt;/strong&gt;&lt;/p&gt;
+&lt;p&gt;Rapid changes continued after the language had been named, for example
+the introduction of the &amp;amp;&amp;amp; and || operators. In BCPL and B, the
+evaluation of expressions depends on context: within if and other
+conditional statements that compare an expression's value with zero,
+these languages place a special interpretation on the and (&amp;amp;) and or
+(|) operators. In ordinary contexts, they operate bitwise, but in the
+B statement&lt;/p&gt;
+&lt;p&gt;if (e1 &amp;amp; e2) ...&lt;/p&gt;
+&lt;p&gt;the compiler must evaluate e1 and if it is non-zero, evaluate e2, and
+if it too is non-zero, elaborate the statement dependent on the if.
+The requirement descends recursively on &amp;amp; and | operators within e1
+and e2. The short-circuit semantics of the Boolean operators in such
+`truth-value' context seemed desirable, but the overloading of the
+operators was difficult to explain and use. At the suggestion of Alan
+Snyder, I introduced the &amp;amp;&amp;amp; and || operators to make the mechanism
+more explicit. Their tardy introduction explains an infelicity of C's
+precedence rules. In B one writes&lt;/p&gt;
+&lt;p&gt;if (a==b &amp;amp; c) ...&lt;/p&gt;
+&lt;p&gt;to check whether a equals b and c is non-zero; in such a conditional
+expression it is better that &amp;amp; have lower precedence than ==. In
+converting from B to C, one wants to replace &amp;amp; by &amp;amp;&amp;amp; in such a
+statement; to make the conversion less painful, we decided to keep the
+precedence of the &amp;amp; operator the same relative to ==, and merely split
+the precedence of &amp;amp;&amp;amp; slightly from &amp;amp;. Today, it seems that it would
+have been preferable to move the relative precedences of &amp;amp; and ==, and
+thereby simplify a common C idiom: to test a masked value against
+another value, one must write&lt;/p&gt;
+&lt;p&gt;if ((a&amp;amp;mask) == b) ...&lt;/p&gt;
+&lt;p&gt;where the inner parentheses are required but easily forgotten.&lt;/p&gt;
+&lt;/blockquote&gt;
+&lt;p&gt;简而言之，是两位大神掉进了自己挖的坑里了。C语言的前身是B语言。B语言是没有逻辑运算符（&amp;amp;&amp;amp;
+||）的，是通过位运算充当逻辑运算的。大神在发明C时，沿用的B语言的一些~~陋习~~传统。由于C的流行，在C之后发明的大多数类C语言也纷纷掉这个坑里了。&lt;/p&gt;</summary></entry></feed>

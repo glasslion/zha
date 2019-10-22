@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom"><title>翼图南</title><link href="https://wing2south.com/" rel="alternate"></link><link href="https://wing2south.com/feeds/others.atom.xml" rel="self"></link><id>https://wing2south.com/</id><updated>2013-08-26T14:13:20+08:00</updated><entry><title>Appscale——Google App Engine的开源克隆/替代</title><link href="https://wing2south.com/post/59374017369/appscale-google-app-engine/" rel="alternate"></link><published>2013-08-26T14:13:20+08:00</published><updated>2013-08-26T14:13:20+08:00</updated><author><name>Leonardo Zhou</name></author><id>tag:wing2south.com,2013-08-26:post/59374017369/appscale-google-app-engine/</id><summary type="html">&lt;p&gt;这个项目其实出来以及很久了，只是前几天才在HackerNews引起关注，github上的 star,
+watch数也随之飙升。我之前苦苦搜寻GAE的替代时，都没发现这个项目。&lt;/p&gt;
+&lt;p&gt;使用界面:
+&lt;img alt="appscale1" src="http://ww2.sinaimg.cn/large/6c3391c1gw1eeea3r5v0tj20dw0a6gm9.jpg" /&gt;&lt;/p&gt;
+&lt;p&gt;Appscale 在底层使用了大量知名的开源软件， 包括并不限于：&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;Apache Cassandra,&lt;/li&gt;
+&lt;li&gt;Apache Hadoop,&lt;/li&gt;
+&lt;li&gt;Apache HBase,&lt;/li&gt;
+&lt;li&gt;Apache Thrift,&lt;/li&gt;
+&lt;li&gt;Apache Zookeeper,&lt;/li&gt;
+&lt;li&gt;Celery,&lt;/li&gt;
+&lt;li&gt;ejabberd,&lt;/li&gt;
+&lt;li&gt;HAProxy,&lt;/li&gt;
+&lt;li&gt;Hypertable,&lt;/li&gt;
+&lt;li&gt;Nginx,&lt;/li&gt;
+&lt;li&gt;RabbitMQ,&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;Appscale 在这些开源项目 之上实现了一套和 Google App Engine 兼容的 API。而且该项目得到了 Google 官方支持，不愁未来 Google App Engine 更新后的兼容性。&lt;/p&gt;
+&lt;p&gt;无论是编程语言，db, 搜索，map reduce 还是IaaS, 各层都是 pluggable 的，开发者可以自由选择自己最熟悉的 tech stack， 目测是一个很灵活的 PaaS.&lt;/p&gt;
+&lt;p&gt;&lt;img alt="appscale2" src="http://ww4.sinaimg.cn/large/6c3391c1gw1eeea43yhwlj20dw07t3zi.jpg" /&gt;&lt;/p&gt;
+&lt;p&gt;架构图:&lt;/p&gt;
+&lt;p&gt;&lt;img alt="appscale3" src="http://ww2.sinaimg.cn/large/6c3391c1gw1eeea4is7soj20dw09r75b.jpg" /&gt;&lt;/p&gt;
+&lt;/p&gt;
+
+&lt;p&gt;&lt;img alt="appscale4" src="http://ww2.sinaimg.cn/large/6c3391c1gw1eeea5087p2j20do0fwmym.jpg" /&gt;&lt;/p&gt;
+&lt;p&gt;&lt;a href="https://github.com/AppScale/appscale"&gt;view on Github&lt;/a&gt;&lt;/p&gt;</summary><category term="google"></category></entry><entry><title>Letterpress</title><link href="https://wing2south.com/post/58607609189/letterpress/" rel="alternate"></link><published>2013-08-18T23:17:41+08:00</published><updated>2013-08-18T23:17:41+08:00</updated><author><name>Leonardo Zhou</name></author><id>tag:wing2south.com,2013-08-18:post/58607609189/letterpress/</id><summary type="html">&lt;p&gt;Letterpress 是 &lt;!-- PELICAN_BEGIN_SUMMARY --&gt; &lt;a href="http://moke.com/"&gt;墨客&lt;/a&gt; 的作者 Wang Ling用Python开发的一款静态博客生成器&lt;!-- PELICAN_END_SUMMARY --&gt;。&lt;/p&gt;
+&lt;p&gt;&lt;img alt="image/letterpress.png" src="http://ww2.sinaimg.cn/large/6c3391c1gw1eee5qg3a1jj20dw09o3yx.jpg" /&gt;&lt;/p&gt;
+&lt;p&gt;Letterpress的风格十分简洁，使用Markdown语法。作者由于习惯用iPad写作，在设计时也特别考虑了在移动平台上的使用体验。&lt;/p&gt;
+&lt;p&gt;服务器端的Letterpress 后台进程通过 &lt;a href="https://github.com/seb-m/pyinotify/"&gt;pyinotify&lt;/a&gt;,监控服务器指定目录下的Markdown文件的增改删，然后将相同的动作作用于对静态博客文件上。&lt;/p&gt;
+&lt;p&gt;配合上dropbox,可以轻易得将本地文件变化，推送到服务器端。管理博客也就是用Markdown编辑器里增改删文件的事。&lt;/p&gt;
+&lt;p&gt;Letterpress还支持使用&lt;a href="http://pygments.org/"&gt;Pygments&lt;/a&gt;高亮Markdown文件里的代码块。&lt;/p&gt;</summary><category term="tool"></category></entry><entry><title>Chrome Logger</title><link href="https://wing2south.com/post/57590624308/chrome-logger/" rel="alternate"></link><published>2013-08-07T13:57:00+08:00</published><updated>2013-08-07T13:57:00+08:00</updated><author><name>Leonardo Zhou</name></author><id>tag:wing2south.com,2013-08-07:post/57590624308/chrome-logger/</id><summary type="html">&lt;p&gt;安装好Chrome Logger的&lt;a href="https://chrome.google.com/webstore/detail/chromephp/noaneddfkdjfnfdakjjmocngnfkfehhd"&gt;Chrome扩展&lt;/a&gt;，并在服务器端安装对应语言（目前支持&lt;a href="http://github.com/cookrn/chrome_logger"&gt;Ruby&lt;/a&gt;, &lt;a href="http://github.com/ccampbell/chromephp"&gt;PHP&lt;/a&gt;, &lt;a href="http://github.com/ccampbell/chromelogger-python"&gt;Python&lt;/a&gt;, &lt;a href="http://github.com/yannickcr/node-chromelogger"&gt;Node.js&lt;/a&gt;, &lt;a href="http://github.com/ChrisMissal/chromelogger"&gt;.NET&lt;/a&gt;）的Chrome Logger库后，就可以&lt;!-- PELICAN_BEGIN_SUMMARY --&gt;在服务器端用类似&lt;code&gt;console.(variable)&lt;/code&gt;的语句log变量，然后在Chrome Dev Tools上查看变量的实际值&lt;!-- PELICAN_END_SUMMARY --&gt;。&lt;/p&gt;
+&lt;p&gt;以&lt;code&gt;Django&lt;/code&gt;为例, 配置十分简单：&lt;/p&gt;
+&lt;div class="highlight snippet"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="c1"&gt;# django middleware&lt;/span&gt;
+&lt;span class="n"&gt;MIDDLEWARE_CLASSES&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="p"&gt;(&lt;/span&gt;
+    &lt;span class="s1"&gt;&amp;#39;chromelogger.DjangoMiddleware&amp;#39;&lt;/span&gt;
+&lt;span class="p"&gt;)&lt;/span&gt;
+
+&lt;span class="c1"&gt;# views&lt;/span&gt;
+&lt;span class="kn"&gt;import&lt;/span&gt; &lt;span class="nn"&gt;chromelogger&lt;/span&gt; &lt;span class="kn"&gt;as&lt;/span&gt; &lt;span class="nn"&gt;console&lt;/span&gt;
+&lt;span class="n"&gt;console&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;log&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="s1"&gt;&amp;#39;Hello console!&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+&lt;span class="n"&gt;console&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;get_header&lt;/span&gt;&lt;span class="p"&gt;()&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;gif 演示:&lt;/p&gt;
+&lt;p&gt;&lt;img alt="chrome-logger1" src="http://ww4.sinaimg.cn/large/6c3391c1gw1eef8b0wyixg20hq06vkcf.gif" /&gt;&lt;/p&gt;
+&lt;p&gt;&lt;img alt="chrome-logger2" src="http://ww3.sinaimg.cn/large/6c3391c1gw1eef8bi0n3bg2076055mz3.gif" /&gt;&lt;/p&gt;
+&lt;p&gt;&lt;a href="http://craig.is/writing/chrome-logger/"&gt;Project Homepage&lt;/a&gt;&lt;/p&gt;</summary><category term="tool"></category><category term="chrome"></category></entry><entry><title>博客新logo的来历</title><link href="https://wing2south.com/post/54889473567/logo-leo/" rel="alternate"></link><published>2013-07-08T12:37:17+08:00</published><updated>2013-07-08T12:37:17+08:00</updated><author><name>Leonardo Zhou</name></author><id>tag:wing2south.com,2013-07-08:post/54889473567/logo-leo/</id><summary type="html">&lt;p&gt;&lt;img alt="images/logo-leo.png" src="http://ww4.sinaimg.cn/large/6c3391c1gw1eee679z81oj20dw0dw74w.jpg" /&gt;&lt;/p&gt;
+&lt;p&gt;博客新logo的来历:炼金术中代表狮子座(&lt;strong&gt;Leo&lt;/strong&gt;)的符号&lt;/p&gt;
+&lt;p&gt;------------------------分割线------------------------&lt;/p&gt;
+&lt;p&gt;本人不是狮子座的，也不是处女座了。&lt;/p&gt;</summary></entry><entry><title>Google Reader 魂兮归开</title><link href="https://wing2south.com/post/54883388320/google-reader/" rel="alternate"></link><published>2013-07-08T11:19:07+08:00</published><updated>2013-07-08T11:19:07+08:00</updated><author><name>Leonardo Zhou</name></author><id>tag:wing2south.com,2013-07-08:post/54883388320/google-reader/</id><summary type="html">&lt;p&gt;今天是Google Reader 头七，缅怀下遗容&lt;/p&gt;
+&lt;p&gt;&lt;img alt="images/google_reader_final.jpg" src="http://ww4.sinaimg.cn/large/6c3391c1gw1eecaaj89ayj20zk0l10xp.jpg" /&gt;&lt;/p&gt;</summary><category term="google"></category></entry><entry><title>为 Github for Windows 设置代理</title><link href="https://wing2south.com/post/41087594715/github-for-windows/" rel="alternate"></link><published>2013-01-21T15:02:00+08:00</published><updated>2013-01-21T15:02:00+08:00</updated><author><name>Leonardo Zhou</name></author><id>tag:wing2south.com,2013-01-21:post/41087594715/github-for-windows/</id><summary type="html">&lt;p&gt;&lt;img alt="github_for_windows" src="http://ww2.sinaimg.cn/large/6c3391c1gw1eef82kp4coj20dw06l75k.jpg" /&gt;&lt;/p&gt;
+&lt;p&gt;今天在公司电脑上安装了Github for Windows， 但一直无法顺利登陆。由于公司电脑必须通过HTTP代理才能连上外网，而Github for Windows自己又不提供设置代理的界面，就只能求助Google了。&lt;/p&gt;
+&lt;p&gt;Google &lt;code&gt;github for windows proxy&lt;/code&gt; 到的前几个link都说要设置 &lt;code&gt;.gitconfig&lt;/code&gt;, 加入下列内容:&lt;/p&gt;
+&lt;div class="highlight snippet"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="k"&gt;[http]&lt;/span&gt;
+
+&lt;span class="na"&gt;proxy&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="s"&gt;host:port&lt;/span&gt;
+
+&lt;span class="k"&gt;[https]&lt;/span&gt;
+
+&lt;span class="na"&gt;proxy&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="s"&gt;host:port&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;很不幸，添加后依旧登陆不上。&lt;/p&gt;
+&lt;p&gt;之后又排除了Github for Windows 会自动适应IE的代理设置的可能。恰好，今天开始github成为了gfw敏感词，于是又怀疑到了方校长头上。&lt;/p&gt;
+&lt;p&gt;最后换了搜索关键词&lt;code&gt;github for windows login failed&lt;/code&gt;,才在这个链接里发现了正解 。&lt;a href="https://github.com/heroku/heroku/issues/319"&gt;&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;打开命令行，加入&lt;/p&gt;
+&lt;div class="highlight snippet"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="k"&gt;SET&lt;/span&gt; &lt;span class="n"&gt;HTTPS_PROXY&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="k"&gt;host&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt;&lt;span class="n"&gt;port&lt;/span&gt;
+
+&lt;span class="k"&gt;SET&lt;/span&gt; &lt;span class="n"&gt;HTTP_PROXY&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="k"&gt;host&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt;&lt;span class="n"&gt;port&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;就行了&lt;/p&gt;
+&lt;hr /&gt;
+&lt;p&gt;&lt;strong&gt;Updates:&lt;/strong&gt;&lt;/p&gt;
+&lt;p&gt;github for windows login failed 可能是由多种原因导致的， 本文提到的 bug以被修复，不再适用&lt;/p&gt;</summary><category term="github"></category></entry></feed>

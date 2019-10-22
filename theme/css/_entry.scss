@@ -1,0 +1,224 @@
+
+/* Headings */
+.entry-content h1, .comment-content h1 {
+    font-size: 26px;
+    line-height: 32px;
+    margin-bottom: 24px;
+    margin-top: 48px;
+}
+.entry-content h2, .comment-content h2 {
+    font-size: 22px;
+    line-height: 28px;
+    margin-bottom: 24px;
+    margin-top: 48px;
+}
+.entry-content h3, .comment-content h3 {
+    font-size: 18px;
+    line-height: 24px;
+    margin-bottom: 24px;
+    margin-top: 24px;
+}
+.entry-content h4, .comment-content h4 {
+    font-size: 16px;
+    line-height: 20px;
+    margin-bottom: 12px;
+    margin-top: 24px;
+}
+.entry-content h5, .comment-content h5 {
+    font-size: 14px;
+    line-height: 18px;
+    margin-bottom: 12px;
+    margin-top: 24px;
+}
+.entry-content h6, .comment-content h6 {
+    font-size: 12px;
+    line-height: 16px;
+    margin-bottom: 0;
+    margin-top: 24px;
+}
+
+/* Links */
+.entry-content a, .entry-summary a, .comment-content a {
+    text-decoration: none;
+}
+.entry-content cite a, .comment-content cite a {
+    text-decoration: none;
+}
+
+/* Text elements */
+.entry-content blockquote, .comment-content blockquote {
+    padding: 24px 0 1px 30px;
+    position: relative;
+}
+
+.entry-content table, .comment-content table {
+    border-top: solid 1px #ddd;
+    font-size: 14px;
+    line-height: 22px;
+}
+.entry-content th, .comment-content th,
+.entry-content td, .comment-content td {
+    border-bottom: solid 1px #ddd;
+    padding: 11px 11px 11px 0;
+}
+.entry-content img {
+    margin-top: 32px;
+}
+.entry-content p img:only-child {
+    margin-top: 8px;
+}
+
+.entry-content code {
+    padding: 2px 4px;
+    font-size: 90%;
+    color: #c7254e;
+    background-color: #f9f2f4;
+    border-radius: 4px;
+}
+
+@media screen and (min-width: 780px) {
+    /* Base */
+    .entry-content , .entry-summary {
+        font-size: 17px;
+        line-height: 28px;
+    }
+    .comment-content {
+        font-size: 16px;
+    }
+
+    /* Headings */
+    .entry-content h1 {
+        font-size: 34px;
+        line-height: 44px;
+        margin-bottom: 28px;
+        margin-top: 56px;
+    }
+    .entry-content h2 {
+        font-size: 28px;
+        line-height: 36px;
+        margin-bottom: 28px;
+        margin-top: 56px;
+    }
+    .entry-content h3 {
+        font-size: 24px;
+        line-height: 30px;
+        margin-bottom: 28px;
+        margin-top: 42px;
+    }
+    .entry-content h4 {
+        font-size: 22px;
+        line-height: 28px;
+        margin-bottom: 28px;
+        margin-top: 28px;
+    }
+    .entry-content h5 {
+        font-size: 20px;
+        line-height: 26px;
+        margin-bottom: 14px;
+        margin-top: 28px;
+    }
+    .entry-content h6 {
+        font-size: 18px;
+        line-height: 24px;
+        margin-bottom: 7px;
+        margin-top: 28px;
+    }
+
+    /* Text elements */
+    .entry-content hr,
+    .entry-content p,
+    .entry-content ul,
+    .entry-content ol,
+    .entry-content dd,
+    .entry-content blockquote,
+    .entry-content address,
+    .entry-content pre,
+    .entry-content table {
+        margin-bottom: 28px;
+    }
+    .entry-content ul, .entry-content ol {
+        margin-left: 2em;
+    }
+    .entry-content li > ul,
+    .entry-content li > ol {
+        margin-bottom: 0;
+        margin-left: 1.5em;
+    }
+    .entry-content dd {
+        margin-left: 2em;
+    }
+    .entry-content pre {
+        font-size: 15px;
+    }
+    .entry-content code, .entry-content kbd, .entry-content tt, .entry-content var {
+        font-size: 15px;
+    }
+    .entry-content table {
+        font-size: 15px;
+        line-height: 24px;
+    }
+    .entry-content th,
+    .entry-content td {
+        padding: 12px;
+    }
+}
+
+/* Alignment */
+.aligncenter,
+.alignleft,
+.alignright {
+    margin-bottom: 24px;
+}
+.aligncenter {
+    clear: both;
+    display: block;
+    margin-right: auto;
+    margin-left: auto;
+}
+.alignleft {
+    display: inline;
+    float: left;
+    margin-right: 24px;
+}
+.alignright {
+    display: inline;
+    float: right;
+    margin-left: 24px;
+}
+@media screen and (min-width: 1180px) {
+    .no-sidebar .alignleft {
+        margin-left: -100px;
+    }
+    .no-sidebar .alignright {
+        margin-right: -100px;
+    }
+}
+
+/* Caption */
+.wp-caption {
+    color: #777;
+    font-size: 94%;
+    font-style: italic;
+    margin-bottom: 24px;
+    width: auto !important;
+}
+.wp-caption img[class*="wp-image-"] {
+    display: block;
+    margin: 6px auto 0;
+}
+.wp-caption-text {
+    text-align: center;
+}
+.wp-caption .wp-caption-text {
+    margin: 12px 0;
+}
+
+/* Smiley */
+.page-content img.wp-smiley,
+.entry-content img.wp-smiley,
+.comment-content img.wp-smiley {
+    border: none;
+    margin-bottom: 0;
+    margin-top: 0;
+    padding: 0;
+}
